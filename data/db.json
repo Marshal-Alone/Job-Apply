@@ -1,0 +1,41 @@
+{
+  "students": [
+    {
+      "id": "marshal",
+      "name": "Marshal",
+      "email": "marshal@peerapply.local",
+      "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=Marshal",
+      "college": "Engineering Institute",
+      "branch": "Computer Science",
+      "batch": "2025",
+      "skills": [
+        "React",
+        "Next.js",
+        "Node.js",
+        "TypeScript",
+        "Tailwind",
+        "Python",
+        "MongoDB"
+      ]
+    },
+    {
+      "id": "vaishnavi",
+      "name": "Vaishnavi",
+      "email": "vaishnavi@peerapply.local",
+      "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=Vaishnavi",
+      "college": "Engineering Institute",
+      "branch": "Information Technology",
+      "batch": "2025",
+      "skills": [
+        "React",
+        "JavaScript",
+        "Python",
+        "SQL",
+        "UI/UX",
+        "Java",
+        "Full Stack"
+      ]
+    }
+  ],
+  "jobs": []
+}
