@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
       applyUrl: sanitizeUrl(result.data.applyUrl),
       salary: result.data.salary || undefined,
       deadline: result.data.deadline || undefined,
+      friendNote: result.data.friendNote || undefined,
       imageUrl: primaryImageUrl,
       imageUrls: allImageUrls,
     };

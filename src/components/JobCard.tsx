@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Job, Student, ApplicationStatus } from '@/lib/types';
 import {
   ExternalLink,
@@ -10,8 +10,10 @@ import {
   Trash2,
   Check,
   Image as ImageIcon,
+  Mail,
 } from 'lucide-react';
 import { formatTimeAgo } from '@/lib/utils';
+import { ApplyActionModal } from './ApplyActionModal';
 
 interface JobCardProps {
   job: Job;
@@ -30,6 +32,8 @@ export const JobCard: React.FC<JobCardProps> = ({
   onDeleteJob,
   onSelectJob,
 }) => {
+  const [isApplyPopupOpen, setIsApplyPopupOpen] = useState(false);
+
   const activeApp = activeStudent ? job.applications?.[activeStudent.id] : undefined;
   const isApplied = activeApp?.status === 'APPLIED';
 
@@ -41,6 +45,12 @@ export const JobCard: React.FC<JobCardProps> = ({
       ? [job.imageUrl]
       : [];
 
+  const isEmailApply =
+    job.applyType === 'EMAIL' ||
+    Boolean(job.applyInstructions) ||
+    job.applyUrl.startsWith('mailto:') ||
+    (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(job.applyUrl) && !job.applyUrl.startsWith('http'));
+
   // Other peer (e.g., Vaishnavi if Marshal is active, or vice versa)
   const peerStudentId = activeStudent?.id === 'marshal' ? 'vaishnavi' : 'marshal';
   const peerName = activeStudent?.id === 'marshal' ? 'Vaishnavi' : 'Marshal';
@@ -49,10 +59,14 @@ export const JobCard: React.FC<JobCardProps> = ({
 
   const handleApplyClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (job.applyUrl && job.applyUrl !== '#') {
-      window.open(job.applyUrl, '_blank', 'noopener,noreferrer');
+    if (isEmailApply) {
+      setIsApplyPopupOpen(true);
+    } else {
+      if (job.applyUrl && job.applyUrl !== '#') {
+        window.open(job.applyUrl, '_blank', 'noopener,noreferrer');
+      }
+      onApply(job.id);
     }
-    onApply(job.id);
   };
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -93,6 +107,14 @@ export const JobCard: React.FC<JobCardProps> = ({
             >
               {job.company}
             </span>
+
+            {/* HR Email Badge */}
+            {isEmailApply && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900/60">
+                <Mail className="w-3 h-3" />
+                <span>HR Email</span>
+              </span>
+            )}
 
             {/* Gray Applied Badge */}
             {isApplied && (
@@ -149,6 +171,18 @@ export const JobCard: React.FC<JobCardProps> = ({
           <span>•</span>
           <span>{job.jobType || 'Internship'}</span>
         </div>
+
+        {/* Friend Note Preview (if provided) */}
+        {job.friendNote && (
+          <div className="mb-3 px-3 py-2 rounded-xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-300/70 dark:border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2">
+            <span className="font-bold text-amber-700 dark:text-amber-400 shrink-0">
+              💬 {job.postedBy?.studentName?.split(' ')[0] || 'Friend'}:
+            </span>
+            <span className="italic line-clamp-2 leading-relaxed">
+              &ldquo;{job.friendNote}&rdquo;
+            </span>
+          </div>
+        )}
 
         {/* Clean Description / Extracted Info */}
         {cleanDescription && (
@@ -217,11 +251,11 @@ export const JobCard: React.FC<JobCardProps> = ({
               <button
                 onClick={handleApplyClick}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition shadow-none"
-                title="Open link again"
+                title={isEmailApply ? 'View HR email popup' : 'Open link again'}
               >
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>Applied</span>
-                <ExternalLink className="w-3 h-3 opacity-60" />
+                {isEmailApply ? <Mail className="w-3 h-3 opacity-60" /> : <ExternalLink className="w-3 h-3 opacity-60" />}
               </button>
               <button
                 onClick={(e) => {
@@ -234,9 +268,19 @@ export const JobCard: React.FC<JobCardProps> = ({
                 Reset
               </button>
             </div>
+          ) : isEmailApply ? (
+            <button
+              onClick={handleApplyClick}
+              title={`Popup: ${job.applyInstructions || 'Send resume on HR email'}`}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-sm active:scale-[0.98]"
+            >
+              <Mail className="w-3.5 h-3.5" />
+              <span>Apply (HR Email)</span>
+            </button>
           ) : (
             <button
               onClick={handleApplyClick}
+              title={`Opens ${job.applyUrl}`}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition shadow-sm active:scale-[0.98]"
             >
               <span>Apply</span>
@@ -245,6 +289,17 @@ export const JobCard: React.FC<JobCardProps> = ({
           )}
         </div>
       </div>
+
+      {/* Apply Instructions Popup Modal */}
+      {isApplyPopupOpen && (
+        <ApplyActionModal
+          job={job}
+          student={activeStudent}
+          isOpen={isApplyPopupOpen}
+          onClose={() => setIsApplyPopupOpen(false)}
+          onApply={onApply}
+        />
+      )}
     </div>
   );
 };

@@ -1,33 +1,34 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Job, Student, ApplicationStatus } from '@/lib/types';
+import React, { useState, useEffect } from 'react';
+import { Job, Student } from '@/lib/types';
 import {
   X,
   ExternalLink,
-  CheckCircle2,
   Calendar,
   MapPin,
   DollarSign,
-  Clock,
-  Users,
   Image as ImageIcon,
-  Sparkles,
-  Send,
   ChevronLeft,
   ChevronRight,
   Maximize2,
-  Minimize2,
+  Sparkles,
+  MessageSquare,
+  Mail,
+  Globe,
+  Edit3,
+  Check,
+  Send,
 } from 'lucide-react';
 import { formatTimeAgo } from '@/lib/utils';
+import { ApplyActionModal } from './ApplyActionModal';
 
 interface JobModalProps {
   job: Job | null;
   onClose: () => void;
   activeStudent: Student | null;
   onApply: (jobId: string) => void;
-  onUpdateStatus: (jobId: string, status: ApplicationStatus, notes?: string) => void;
-  onOpenAiFit: (job: Job) => void;
+  onJobUpdated?: (updatedJob: Job) => void;
 }
 
 export const JobModal: React.FC<JobModalProps> = ({
@@ -35,42 +36,121 @@ export const JobModal: React.FC<JobModalProps> = ({
   onClose,
   activeStudent,
   onApply,
-  onUpdateStatus,
-  onOpenAiFit,
+  onJobUpdated,
 }) => {
+  const [currentJob, setCurrentJob] = useState<Job | null>(job);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isApplyPopupOpen, setIsApplyPopupOpen] = useState(false);
 
-  if (!job) return null;
+  // Apply action edit state
+  const [isEditingAction, setIsEditingAction] = useState(false);
+  const [editActionType, setEditActionType] = useState<'LINK' | 'EMAIL'>('LINK');
+  const [editUrl, setEditUrl] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editInstructions, setEditInstructions] = useState('');
+  const [isSavingAction, setIsSavingAction] = useState(false);
 
-  const activeApp = activeStudent ? job.applications?.[activeStudent.id] : undefined;
-  const currentStatus: ApplicationStatus = activeApp?.status || 'NOT_APPLIED';
-  const [personalNotes, setPersonalNotes] = useState(activeApp?.notes || '');
-  const [isSavingNotes, setIsSavingNotes] = useState(false);
+  useEffect(() => {
+    if (job) {
+      setCurrentJob(job);
+      const isEmail =
+        job.applyType === 'EMAIL' ||
+        Boolean(job.applyInstructions) ||
+        job.applyUrl.startsWith('mailto:') ||
+        (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(job.applyUrl) && !job.applyUrl.startsWith('http'));
+
+      const initialEmail =
+        job.applyEmail ||
+        (job.applyUrl.startsWith('mailto:')
+          ? job.applyUrl.replace('mailto:', '').split('?')[0]
+          : job.applyUrl.includes('@') && !job.applyUrl.startsWith('http')
+          ? job.applyUrl.trim()
+          : (job.description.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)?.[0] || ''));
+
+      setEditActionType(isEmail ? 'EMAIL' : 'LINK');
+      setEditUrl(job.applyUrl.startsWith('mailto:') ? '' : job.applyUrl);
+      setEditEmail(initialEmail);
+      setEditInstructions(job.applyInstructions || (initialEmail ? `Send resume on HR email: ${initialEmail}` : ''));
+    }
+  }, [job]);
+
+  if (!currentJob) return null;
+
+  const activeApp = activeStudent ? currentJob.applications?.[activeStudent.id] : undefined;
+  const isApplied = activeApp?.status === 'APPLIED';
 
   // Normalize all attached guide images
   const images: string[] =
-    job.imageUrls && job.imageUrls.length > 0
-      ? job.imageUrls
-      : job.imageUrl
-      ? [job.imageUrl]
+    currentJob.imageUrls && currentJob.imageUrls.length > 0
+      ? currentJob.imageUrls
+      : currentJob.imageUrl
+      ? [currentJob.imageUrl]
       : [];
 
-  const allApplicants = Object.values(job.applications || {}).filter(
-    (app) => app.status !== 'NOT_APPLIED'
-  );
+  const isEmailApply =
+    currentJob.applyType === 'EMAIL' ||
+    Boolean(currentJob.applyInstructions) ||
+    currentJob.applyUrl.startsWith('mailto:') ||
+    (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentJob.applyUrl) && !currentJob.applyUrl.startsWith('http'));
 
-  const handleSaveNotes = async () => {
-    setIsSavingNotes(true);
-    await onUpdateStatus(job.id, currentStatus, personalNotes);
-    setIsSavingNotes(false);
-  };
+  const detectedEmail =
+    currentJob.applyEmail ||
+    (currentJob.applyUrl.startsWith('mailto:')
+      ? currentJob.applyUrl.replace('mailto:', '').split('?')[0]
+      : currentJob.applyUrl.includes('@') && !currentJob.applyUrl.startsWith('http')
+      ? currentJob.applyUrl.trim()
+      : (currentJob.description.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)?.[0] || 'hr@company.com'));
+
+  const applyInstructions =
+    currentJob.applyInstructions || `Send resume on HR email: ${detectedEmail}`;
 
   const handleApplyClick = () => {
-    if (job.applyUrl && job.applyUrl !== '#') {
-      window.open(job.applyUrl, '_blank', 'noopener,noreferrer');
+    if (isEmailApply) {
+      setIsApplyPopupOpen(true);
+    } else {
+      if (currentJob.applyUrl && currentJob.applyUrl !== '#') {
+        window.open(currentJob.applyUrl, '_blank', 'noopener,noreferrer');
+      }
+      onApply(currentJob.id);
     }
-    onApply(job.id);
+  };
+
+  const handleSaveActionEdit = async () => {
+    setIsSavingAction(true);
+    try {
+      const finalUrl =
+        editActionType === 'EMAIL'
+          ? (editEmail.trim() ? `mailto:${editEmail.trim()}` : '#')
+          : (editUrl.trim() || '#');
+
+      const finalInstructions =
+        editActionType === 'EMAIL'
+          ? (editInstructions.trim() || (editEmail ? `Send resume on HR email: ${editEmail}` : undefined))
+          : undefined;
+
+      const res = await fetch(`/api/jobs/${currentJob.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applyType: editActionType,
+          applyUrl: finalUrl,
+          applyEmail: editActionType === 'EMAIL' ? editEmail.trim() : undefined,
+          applyInstructions: finalInstructions,
+        }),
+      });
+
+      const json = await res.json();
+      if (json.success && json.data) {
+        setCurrentJob(json.data);
+        if (onJobUpdated) onJobUpdated(json.data);
+        setIsEditingAction(false);
+      }
+    } catch (err) {
+      console.error('Failed to update job apply action:', err);
+    } finally {
+      setIsSavingAction(false);
+    }
   };
 
   const handlePrevImage = (e?: React.MouseEvent) => {
@@ -168,17 +248,17 @@ export const JobModal: React.FC<JobModalProps> = ({
             <div>
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <span className="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-                  {job.company}
+                  {currentJob.company}
                 </span>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                  {job.jobType}
+                  {currentJob.jobType}
                 </span>
                 <span className="text-xs text-slate-400">
-                  Posted {formatTimeAgo(job.createdAt)} by {job.postedBy?.studentName || 'Friend'}
+                  Posted {formatTimeAgo(currentJob.createdAt)} by {currentJob.postedBy?.studentName || 'Friend'}
                 </span>
               </div>
               <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100">
-                {job.title}
+                {currentJob.title}
               </h2>
             </div>
             <button
@@ -189,43 +269,35 @@ export const JobModal: React.FC<JobModalProps> = ({
             </button>
           </div>
 
-          {/* Scrollable Body */}
-          <div className="overflow-y-auto py-4 space-y-6 flex-1 pr-1">
-            {/* Metadata Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                <span className="text-[11px] text-slate-400 block mb-1">Location</span>
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200">
-                  <MapPin className="w-3.5 h-3.5 text-blue-500" />
-                  <span>{job.location}</span>
+          {/* Scrollable Body - Ordered exactly as requested: 1. Friend Note, 2. AI Summary, 3. Images */}
+          <div className="overflow-y-auto py-4 space-y-5 flex-1 pr-1">
+            {/* 1. FIRST: Whatever note the friend added when adding the job */}
+            {currentJob.friendNote ? (
+              <div className="p-4 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-300/80 dark:border-amber-500/40 shadow-xs">
+                <div className="flex items-center gap-2 mb-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
+                  <MessageSquare className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <span>Note from {currentJob.postedBy?.studentName || 'Friend'}:</span>
                 </div>
+                <p className="text-xs sm:text-sm font-medium leading-relaxed text-slate-800 dark:text-slate-100 pl-6">
+                  &ldquo;{currentJob.friendNote}&rdquo;
+                </p>
               </div>
+            ) : null}
 
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                <span className="text-[11px] text-slate-400 block mb-1">Stipend / Salary</span>
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                  <DollarSign className="w-3.5 h-3.5" />
-                  <span>{job.salary || 'Not specified'}</span>
-                </div>
+            {/* 2. THEN: AI Summary */}
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 bg-slate-50/80 dark:bg-slate-800/40">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                  AI Summary
+                </h4>
               </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                <span className="text-[11px] text-slate-400 block mb-1">Deadline</span>
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>{job.deadline || 'Rolling basis'}</span>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                <span className="text-[11px] text-slate-400 block mb-1">Shared Via</span>
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  {job.source}
-                </span>
+              <div className="text-xs leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-line">
+                {currentJob.description}
               </div>
             </div>
 
-            {/* Guide Screenshots Gallery (Shows all attached images) */}
+            {/* 3. THEN: Guide Screenshots & Images Gallery */}
             {images.length > 0 && (
               <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 bg-slate-50/70 dark:bg-slate-950/50">
                 <div className="flex items-center justify-between mb-3">
@@ -305,24 +377,45 @@ export const JobModal: React.FC<JobModalProps> = ({
               </div>
             )}
 
-            {/* Description */}
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                Job Description &amp; Details
-              </h4>
-              <div className="text-xs leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-line bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
-                {job.description}
+            {/* Details & Metadata Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                <span className="text-[11px] text-slate-400 block mb-1">Location</span>
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200">
+                  <MapPin className="w-3.5 h-3.5 text-blue-500" />
+                  <span>{currentJob.location}</span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                <span className="text-[11px] text-slate-400 block mb-1">Stipend / Salary</span>
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                  <DollarSign className="w-3.5 h-3.5" />
+                  <span>{currentJob.salary || 'Not specified'}</span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                <span className="text-[11px] text-slate-400 block mb-1">Deadline</span>
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>{currentJob.deadline || 'Rolling basis'}</span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                <span className="text-[11px] text-slate-400 block mb-1">Shared Via</span>
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {currentJob.source}
+                </span>
               </div>
             </div>
 
             {/* Tags */}
-            {job.tags && job.tags.length > 0 && (
+            {currentJob.tags && currentJob.tags.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                  Required Skills &amp; Tags
-                </h4>
                 <div className="flex flex-wrap gap-2">
-                  {job.tags.map((tag, idx) => (
+                  {currentJob.tags.map((tag, idx) => (
                     <span
                       key={idx}
                       className="text-xs font-medium px-3 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/60"
@@ -334,151 +427,212 @@ export const JobModal: React.FC<JobModalProps> = ({
               </div>
             )}
 
-            {/* Classmates Applications Status Breakdown */}
-            <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40">
-              <div className="flex items-center justify-between mb-3">
+            {/* 🎯 Apply Action Verification & Quick Edit */}
+            <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 space-y-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
-                    Classmates in Your Group Who Applied ({allApplicants.length})
-                  </h4>
+                  {isEmailApply ? (
+                    <Mail className="w-4 h-4 text-indigo-500 shrink-0" />
+                  ) : (
+                    <Globe className="w-4 h-4 text-blue-500 shrink-0" />
+                  )}
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    Apply Action:
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                    {isEmailApply ? '✉️ HR Email Popup' : '🌐 Web Portal Link'}
+                  </span>
                 </div>
-                <span className="text-[11px] text-slate-500">Live Peer Sync</span>
+
+                <button
+                  type="button"
+                  onClick={() => setIsEditingAction(!isEditingAction)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>{isEditingAction ? 'Cancel' : 'Change / Verify Action'}</span>
+                </button>
               </div>
 
-              {allApplicants.length > 0 ? (
-                <div className="space-y-2">
-                  {allApplicants.map((app) => (
-                    <div
-                      key={app.studentId}
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <img
-                          src={
-                            app.studentAvatar ||
-                            `https://api.dicebear.com/7.x/bottts/svg?seed=${app.studentName}`
-                          }
-                          alt={app.studentName}
-                          className="w-7 h-7 rounded-full border bg-slate-100"
-                        />
-                        <div>
-                          <span className="font-semibold text-slate-800 dark:text-slate-200 block">
-                            {app.studentName}
-                          </span>
-                          {app.notes && (
-                            <span className="text-[11px] text-slate-500 block italic">
-                              &quot;{app.notes}&quot;
-                            </span>
-                          )}
-                        </div>
+              {/* View / Verify Mode */}
+              {!isEditingAction ? (
+                <div className="text-xs text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                  {isEmailApply ? (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-semibold">
+                        <Mail className="w-3.5 h-3.5" />
+                        <span>Clicking &quot;Apply&quot; opens popup with instruction:</span>
                       </div>
-
-                      <div className="text-right">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                            app.status === 'APPLIED'
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                              : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                          }`}
-                        >
-                          {app.status}
-                        </span>
-                        {app.appliedAt && (
-                          <span className="block text-[10px] text-slate-400 mt-0.5">
-                            {formatTimeAgo(app.appliedAt)}
-                          </span>
-                        )}
-                      </div>
+                      <p className="font-medium text-slate-800 dark:text-slate-100 pl-5 italic">
+                        &ldquo;{applyInstructions}&rdquo;
+                      </p>
+                      <p className="text-[11px] text-slate-400 pl-5">
+                        HR Email: <code className="font-mono text-indigo-500">{detectedEmail}</code> (with 1-click Copy &amp; Open Mail App buttons)
+                      </p>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-semibold">
+                        <Globe className="w-3.5 h-3.5" />
+                        <span>Clicking &quot;Apply&quot; opens web portal link:</span>
+                      </div>
+                      <a
+                        href={currentJob.applyUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block font-mono text-blue-600 dark:text-blue-400 hover:underline pl-5 truncate"
+                      >
+                        {currentJob.applyUrl}
+                      </a>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <p className="text-xs text-slate-500 italic py-2">
-                  None of your classmates have tracked this application yet.
-                </p>
-              )}
-            </div>
-
-            {/* Active Student Application Tracker & Notes */}
-            {activeStudent && (
-              <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                  Your Personal Application Tracker ({activeStudent.name})
-                </h4>
-
-                <div className="flex flex-wrap items-center gap-2 mb-3">
-                  {(['NOT_APPLIED', 'APPLIED'] as ApplicationStatus[]).map((status) => (
+                /* Edit Mode */
+                <div className="space-y-3 pt-1 border-t border-slate-200 dark:border-slate-800 animate-in fade-in duration-150">
+                  <div className="flex rounded-xl bg-slate-200/80 dark:bg-slate-800/80 p-0.5 text-xs font-semibold max-w-fit">
                     <button
-                      key={status}
-                      onClick={() => onUpdateStatus(job.id, status, personalNotes)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
-                        currentStatus === status
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      type="button"
+                      onClick={() => setEditActionType('LINK')}
+                      className={`flex items-center gap-1 px-3 py-1 rounded-lg transition ${
+                        editActionType === 'LINK'
+                          ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
                       }`}
                     >
-                      {status === 'NOT_APPLIED' ? 'Not Applied' : '✓ Applied'}
+                      <Globe className="w-3 h-3" />
+                      <span>Open Web Link</span>
                     </button>
-                  ))}
-                </div>
-
-                {/* Personal Notes */}
-                <div>
-                  <label className="block text-[11px] font-medium text-slate-500 mb-1">
-                    Add Private Application / Referral Notes (e.g. referral ID, instructions)
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={personalNotes}
-                      onChange={(e) => setPersonalNotes(e.target.value)}
-                      placeholder="e.g. Sent referral to recruiter..."
-                      className="flex-1 text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100"
-                    />
                     <button
-                      onClick={handleSaveNotes}
-                      disabled={isSavingNotes}
-                      className="px-3 py-2 rounded-xl text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition"
+                      type="button"
+                      onClick={() => {
+                        setEditActionType('EMAIL');
+                        if (!editInstructions && editEmail) {
+                          setEditInstructions(`Send resume on HR email: ${editEmail}`);
+                        }
+                      }}
+                      className={`flex items-center gap-1 px-3 py-1 rounded-lg transition ${
+                        editActionType === 'EMAIL'
+                          ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+                      }`}
                     >
-                      <Send className="w-3.5 h-3.5" />
-                      <span>Save</span>
+                      <Mail className="w-3 h-3" />
+                      <span>HR Email Popup</span>
+                    </button>
+                  </div>
+
+                  {editActionType === 'EMAIL' ? (
+                    <div className="space-y-2">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">
+                          HR Email Address:
+                        </label>
+                        <input
+                          type="email"
+                          placeholder="e.g. hr@gmail.com"
+                          value={editEmail}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditEmail(val);
+                            if (!editInstructions || editInstructions.startsWith('Send resume on HR email:')) {
+                              setEditInstructions(`Send resume on HR email: ${val}`);
+                            }
+                          }}
+                          className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">
+                          Popup Message / Instruction:
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Send resume on HR email: hr@gmail.com"
+                          value={editInstructions}
+                          onChange={(e) => setEditInstructions(e.target.value)}
+                          className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">
+                        Application Website URL:
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="https://careers.company.com/apply/..."
+                        value={editUrl}
+                        onChange={(e) => setEditUrl(e.target.value)}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingAction(false)}
+                      className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isSavingAction}
+                      onClick={handleSaveActionEdit}
+                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>{isSavingAction ? 'Saving...' : 'Save Apply Action'}</span>
                     </button>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Modal Action Footer */}
-          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2 shrink-0">
             <button
-              onClick={() => onOpenAiFit(job)}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold text-purple-600 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 transition"
+              onClick={onClose}
+              className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
             >
-              <Sparkles className="w-4 h-4 text-purple-500" />
-              <span>AI Match &amp; Cold Email</span>
+              Close
             </button>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={onClose}
-                className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-              >
-                Close
-              </button>
-
-              <button
-                onClick={handleApplyClick}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition shadow-md"
-              >
-                <span>{currentStatus === 'APPLIED' ? 'Re-open Portal' : 'Apply & Track'}</span>
-                <ExternalLink className="w-4 h-4" />
-              </button>
-            </div>
+            <button
+              onClick={handleApplyClick}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition shadow-md active:scale-[0.98]"
+            >
+              {isEmailApply ? (
+                <>
+                  <Mail className="w-4 h-4" />
+                  <span>{isApplied ? 'View HR Email & Popup' : 'Apply via HR Email'}</span>
+                </>
+              ) : (
+                <>
+                  <span>{isApplied ? 'Re-open Portal' : 'Apply Now'}</span>
+                  <ExternalLink className="w-4 h-4" />
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Apply Action Popup Modal */}
+      {isApplyPopupOpen && (
+        <ApplyActionModal
+          job={currentJob}
+          student={activeStudent}
+          isOpen={isApplyPopupOpen}
+          onClose={() => setIsApplyPopupOpen(false)}
+          onApply={onApply}
+        />
+      )}
     </>
   );
 };

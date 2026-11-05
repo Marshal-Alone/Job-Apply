@@ -2,6 +2,9 @@ export interface AIParsedJobResult {
   title: string;
   company: string;
   applyUrl: string;
+  applyType?: 'LINK' | 'EMAIL' | 'INSTRUCTION';
+  applyEmail?: string;
+  applyInstructions?: string;
   location: string;
   jobType: 'Internship' | 'Full-time' | 'Co-op' | 'Contract' | 'Part-time';
   salary?: string;
@@ -186,7 +189,28 @@ export function heuristicParseJobText(
 
   // Extract URL
   const urlMatch = fullText.match(/https?:\/\/[^\s]+/i);
-  const applyUrl = urlMatch ? urlMatch[0].replace(/[.,;)]+$/, '') : 'https://';
+  let applyUrl = urlMatch ? urlMatch[0].replace(/[.,;)]+$/, '') : '';
+
+  // Extract Email or HR application instruction
+  const emailMatch = fullText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  const detectedEmail = emailMatch ? emailMatch[0] : undefined;
+
+  let applyType: 'LINK' | 'EMAIL' | 'INSTRUCTION' = 'LINK';
+  let applyEmail: string | undefined = detectedEmail;
+  let applyInstructions: string | undefined = undefined;
+
+  if (detectedEmail && (!urlMatch || /send resume|email resume|apply at|hr email|mail your resume|send your resume/i.test(fullText))) {
+    applyType = 'EMAIL';
+    applyEmail = detectedEmail;
+    applyInstructions = `Send resume on HR email: ${detectedEmail}`;
+    if (!applyUrl) {
+      applyUrl = `mailto:${detectedEmail}`;
+    }
+  }
+
+  if (!applyUrl) {
+    applyUrl = 'https://';
+  }
 
   // Company extraction: prioritize destination info or known domain
   let company = destinationInfo?.company || 'Company';
@@ -285,6 +309,9 @@ export function heuristicParseJobText(
     title,
     company,
     applyUrl,
+    applyType,
+    applyEmail,
+    applyInstructions,
     location,
     jobType,
     salary: undefined,
@@ -330,7 +357,10 @@ Return ONLY a valid JSON object:
 {
   "title": string (clean job title, e.g. "Software Developer"),
   "company": string (clean company name, e.g. "Jio"),
-  "applyUrl": string (direct application URL),
+  "applyUrl": string (direct application URL or mailto: if email apply),
+  "applyType": "LINK" or "EMAIL",
+  "applyEmail": string or null (e.g. "hr@gmail.com" if application is via email),
+  "applyInstructions": string or null (e.g. "Send resume on HR email: hr@gmail.com"),
   "location": string (e.g. "Remote", "Mumbai", "Bangalore"),
   "jobType": "Internship" | "Full-time" | "Co-op" | "Contract" | "Part-time",
   "description": string (concise 1-2 sentence overview. NEVER include raw URLs or query parameters in description!)
@@ -389,17 +419,38 @@ Return pure JSON with no markdown backticks.`;
     }
 
     const parsed = JSON.parse(candidateText);
-    const cleanApplyUrl =
-      parsed.applyUrl?.startsWith('http')
-        ? parsed.applyUrl
-        : urlMatch
-        ? urlMatch[0]
-        : 'https://';
+    const emailCandidate =
+      parsed.applyEmail ||
+      (text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)?.[0]);
+    const isEmail =
+      parsed.applyType === 'EMAIL' ||
+      (!parsed.applyUrl?.startsWith('http') && Boolean(emailCandidate));
+
+    const cleanApplyUrl = isEmail
+      ? (parsed.applyUrl?.startsWith('mailto:') ? parsed.applyUrl : `mailto:${emailCandidate || 'hr@example.com'}`)
+      : (parsed.applyUrl?.startsWith('http') ? parsed.applyUrl : urlMatch ? urlMatch[0] : 'https://');
 
     // Ensure raw URLs don't leak into description
     const cleanDesc = (parsed.description || destinationInfo?.description || '')
       .replace(/https?:\/\/[^\s]+/gi, '')
       .trim() || `Opening at ${parsed.company || destinationInfo?.company || 'Company'}. Click Apply to view full details.`;
+
+    return {
+      title: parsed.title || destinationInfo?.title || 'Software Developer',
+      company: parsed.company || destinationInfo?.company || 'Company',
+      applyUrl: cleanApplyUrl,
+      applyType: isEmail ? 'EMAIL' : 'LINK',
+      applyEmail: emailCandidate || undefined,
+      applyInstructions:
+        parsed.applyInstructions ||
+        (isEmail && emailCandidate ? `Send resume on HR email: ${emailCandidate}` : undefined),
+      location: parsed.location || 'Remote',
+      jobType: parsed.jobType || 'Internship',
+      tags: Array.isArray(parsed.tags) ? parsed.tags : [],
+      description: cleanDesc,
+      requirements: [],
+      source: 'WhatsApp',
+    };
 
     const titleResult = (!parsed.title || parsed.title.toLowerCase() === 'unknown')
       ? (destinationInfo?.title || 'Software Developer')

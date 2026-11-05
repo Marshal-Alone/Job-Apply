@@ -184,6 +184,45 @@ export async function createJob(
   return newJob;
 }
 
+export async function updateJob(
+  id: string,
+  updates: Partial<Omit<Job, 'id' | 'createdAt'>>
+): Promise<Job | null> {
+  const now = new Date().toISOString();
+  const db = await getMongoDb();
+  if (db) {
+    try {
+      const collection = db.collection<Job>('jobs');
+      const result = await collection.findOneAndUpdate(
+        { id },
+        { $set: { ...updates, updatedAt: now } },
+        { returnDocument: 'after' }
+      );
+      if (result) {
+        const j = result as unknown as Job;
+        return {
+          ...j,
+          imageUrls: j.imageUrls || (j.imageUrl ? [j.imageUrl] : []),
+        };
+      }
+    } catch (e) {
+      console.warn('MongoDB updateJob failed, falling back to local DB:', e);
+    }
+  }
+
+  const local = ensureLocalDb();
+  const index = (local.jobs || []).findIndex((j) => j.id === id);
+  if (index === -1) return null;
+  const updatedJob: Job = {
+    ...local.jobs[index],
+    ...updates,
+    updatedAt: now,
+  };
+  local.jobs[index] = updatedJob;
+  writeLocalDb(local);
+  return updatedJob;
+}
+
 export async function updateStudentApplication(
   jobId: string,
   application: StudentApplication

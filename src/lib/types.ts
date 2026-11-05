@@ -27,12 +27,18 @@ export interface StudentApplication {
   interviewDate?: string;
 }
 
+export type ApplyActionType = 'LINK' | 'EMAIL' | 'INSTRUCTION';
+
 export interface Job {
   id: string;
   title: string;
   company: string;
   applyUrl: string;
+  applyType?: ApplyActionType;
+  applyEmail?: string;
+  applyInstructions?: string;
   description: string;
+  friendNote?: string;
   location: string;
   jobType: 'Internship' | 'Full-time' | 'Co-op' | 'Contract' | 'Part-time';
   salary?: string;

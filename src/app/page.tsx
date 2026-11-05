@@ -8,7 +8,6 @@ import { FilterBar } from '@/components/FilterBar';
 import { JobCard } from '@/components/JobCard';
 import { JobModal } from '@/components/JobModal';
 import { AddJobModal } from '@/components/AddJobModal';
-import { AICoachDrawer } from '@/components/AICoachDrawer';
 import {
   Sparkles,
   RefreshCw,
@@ -28,7 +27,6 @@ export default function Home() {
 
   // Modals
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [aiFitJob, setAiFitJob] = useState<Job | null>(null);
   const [isAddJobOpen, setIsAddJobOpen] = useState(false);
 
   // Toast
@@ -404,19 +402,11 @@ export default function Home() {
           onClose={() => setSelectedJob(null)}
           activeStudent={activeStudent}
           onApply={handleApply}
-          onUpdateStatus={handleUpdateStatus}
-          onOpenAiFit={(job) => {
-            setSelectedJob(null);
-            setAiFitJob(job);
+          onJobUpdated={(updated) => {
+            setJobs((prev) => prev.map((j) => (j.id === updated.id ? updated : j)));
+            setSelectedJob(updated);
+            showToast('Apply action updated successfully!', 'info');
           }}
-        />
-      )}
-
-      {aiFitJob && (
-        <AICoachDrawer
-          job={aiFitJob}
-          student={activeStudent}
-          onClose={() => setAiFitJob(null)}
         />
       )}
     </div>

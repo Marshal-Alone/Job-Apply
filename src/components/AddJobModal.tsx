@@ -13,6 +13,8 @@ import {
   Image as ImageIcon,
   Plus,
   Clipboard,
+  Mail,
+  Globe,
 } from 'lucide-react';
 
 interface AddJobModalProps {
@@ -63,6 +65,7 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({
   onJobAdded,
 }) => {
   const [inputVal, setInputVal] = useState('');
+  const [friendNote, setFriendNote] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,8 +76,31 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({
   const [title, setTitle] = useState('');
   const [company, setCompany] = useState('');
   const [applyUrl, setApplyUrl] = useState('');
+  const [applyActionType, setApplyActionType] = useState<'LINK' | 'EMAIL'>('LINK');
+  const [applyEmail, setApplyEmail] = useState('');
+  const [applyInstructions, setApplyInstructions] = useState('');
   const [location, setLocation] = useState('Remote');
   const [description, setDescription] = useState('');
+
+  // Handle typing in main input with automatic email / link detection
+  const handleInputChange = (val: string) => {
+    setInputVal(val);
+    const emailMatch = val.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+    const hasUrl = /https?:\/\//i.test(val);
+    if (emailMatch && !hasUrl) {
+      setApplyActionType('EMAIL');
+      setApplyEmail(emailMatch[0]);
+      if (!applyInstructions || applyInstructions.startsWith('Send resume on HR email:')) {
+        setApplyInstructions(`Send resume on HR email: ${emailMatch[0]}`);
+      }
+    } else if (hasUrl) {
+      setApplyActionType('LINK');
+      const urlMatch = val.match(/https?:\/\/[^\s]+/i);
+      if (urlMatch && !applyUrl) {
+        setApplyUrl(urlMatch[0]);
+      }
+    }
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -167,8 +193,10 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({
       const parseJson = await parseRes.json();
       let extracted = parseJson.data;
 
+      const urlMatch = inputVal.match(/https?:\/\/[^\s]+/i);
+      const emailMatch = inputVal.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+
       if (!extracted || !extracted.applyUrl) {
-        const urlMatch = inputVal.match(/https?:\/\/[^\s]+/i);
         extracted = {
           title: title || 'Software Developer',
           company: company || 'Company',
@@ -178,11 +206,43 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({
         };
       }
 
-      // Final job payload with multiple images
+      // Determine Apply Action (Link vs Email Popup)
+      const finalApplyType =
+        applyActionType === 'EMAIL' || (!urlMatch && (applyEmail || emailMatch || extracted.applyType === 'EMAIL'))
+          ? 'EMAIL'
+          : 'LINK';
+
+      const finalEmail =
+        applyEmail.trim() ||
+        (emailMatch ? emailMatch[0] : '') ||
+        extracted.applyEmail ||
+        '';
+
+      const finalInstructions =
+        applyInstructions.trim() ||
+        extracted.applyInstructions ||
+        (finalEmail ? `Send resume on HR email: ${finalEmail}` : undefined);
+
+      let finalApplyUrl = applyUrl.trim() || extracted.applyUrl || '';
+      if (finalApplyType === 'EMAIL' && finalEmail) {
+        finalApplyUrl = `mailto:${finalEmail}`;
+      } else if (!finalApplyUrl) {
+        finalApplyUrl = urlMatch ? urlMatch[0] : inputVal.trim() || '#';
+      }
+
+      // Clean user text (without URLs) to use as default friend note if not explicitly provided
+      const cleanUserText = inputVal.replace(/https?:\/\/[^\s]+/gi, '').trim();
+      const finalFriendNote =
+        friendNote.trim() || (cleanUserText.length > 5 ? cleanUserText : undefined);
+
+      // Final job payload with multiple images and friend note
       const jobPayload = {
         title: title.trim() || extracted.title || 'Software Developer',
         company: company.trim() || extracted.company || 'Company',
-        applyUrl: applyUrl.trim() || extracted.applyUrl,
+        applyType: finalApplyType,
+        applyUrl: finalApplyUrl,
+        applyEmail: finalEmail || undefined,
+        applyInstructions: finalInstructions,
         location: location.trim() || extracted.location || 'Remote',
         jobType: 'Internship',
         salary: undefined,
@@ -193,6 +253,7 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({
           (description.trim() || extracted.description || 'Open link for full job details and application.')
             .replace(/https?:\/\/[^\s]+/gi, '')
             .trim(),
+        friendNote: finalFriendNote,
         imageUrl: images[0] || undefined,
         imageUrls: images,
         postedBy: {
@@ -274,14 +335,123 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({
             </label>
             <textarea
               rows={3}
-              placeholder="Paste link or text here, e.g. https://careers.jio.com/... (You can also press Ctrl+V anytime to paste screenshots!)"
+              placeholder="Paste link or text here, e.g. https://careers.jio.com/... or 'Send resume to hr@gmail.com' (You can also press Ctrl+V to paste screenshots!)"
               value={inputVal}
-              onChange={(e) => setInputVal(e.target.value)}
+              onChange={(e) => handleInputChange(e.target.value)}
               className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <p className="text-[11px] text-slate-400 mt-1">
-              AI automatically extracts the company, title, and destination link details.
+              AI automatically extracts company, title, links, and HR emails from text or screenshots.
             </p>
+          </div>
+
+          {/* What happens when clicking "Apply"? */}
+          <div className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 space-y-2.5">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <label className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <span>🎯 What clicking &quot;Apply&quot; does:</span>
+              </label>
+
+              {/* Action Toggle */}
+              <div className="flex rounded-xl bg-slate-200/70 dark:bg-slate-800/80 p-0.5 text-[11px] font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setApplyActionType('LINK')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition ${
+                    applyActionType === 'LINK'
+                      ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <Globe className="w-3 h-3" />
+                  <span>Open Web Link</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setApplyActionType('EMAIL');
+                    if (!applyInstructions && applyEmail) {
+                      setApplyInstructions(`Send resume on HR email: ${applyEmail}`);
+                    }
+                  }}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition ${
+                    applyActionType === 'EMAIL'
+                      ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <Mail className="w-3 h-3" />
+                  <span>HR Email Popup</span>
+                </button>
+              </div>
+            </div>
+
+            {applyActionType === 'EMAIL' ? (
+              <div className="space-y-2 pt-0.5">
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-0.5">
+                    HR Email Address:
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="e.g. hr@gmail.com or careers@company.com"
+                    value={applyEmail}
+                    onChange={(e) => {
+                      const email = e.target.value;
+                      setApplyEmail(email);
+                      if (!applyInstructions || applyInstructions.startsWith('Send resume on HR email:')) {
+                        setApplyInstructions(`Send resume on HR email: ${email}`);
+                      }
+                    }}
+                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-0.5">
+                    Popup Message / Instructions for {peerName}:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Send resume on HR email: hr@gmail.com"
+                    value={applyInstructions}
+                    onChange={(e) => setApplyInstructions(e.target.value)}
+                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div className="p-2 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 text-[11px] text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/50">
+                  ✨ When {peerName} clicks Apply, a popup will show: &ldquo;{applyInstructions || `Send resume on HR email: ${applyEmail || 'hr@gmail.com'}`}&rdquo; with 1-click Copy &amp; Send buttons.
+                </div>
+              </div>
+            ) : (
+              <div className="pt-0.5">
+                <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-0.5">
+                  Direct Career Link / Portal URL:
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://careers.company.com/apply/..."
+                  value={applyUrl}
+                  onChange={(e) => setApplyUrl(e.target.value)}
+                  className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Note for Friend */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              💬 Note / Tip for {peerName} (Optional)
+            </label>
+            <input
+              type="text"
+              placeholder={`e.g. Use referral code 409, deadline is 6 PM, check screenshot 2 for form steps...`}
+              value={friendNote}
+              onChange={(e) => setFriendNote(e.target.value)}
+              className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
 
           {/* Guide Screenshots / Images Gallery Section */}

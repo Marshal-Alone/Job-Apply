@@ -27,6 +27,12 @@ export function sanitizeUrl(rawUrl: string): string {
   if (/^javascript:/i.test(trimmed) || /^data:text\/html/i.test(trimmed)) {
     return '#';
   }
+  if (/^mailto:/i.test(trimmed)) {
+    return trimmed;
+  }
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    return `mailto:${trimmed}`;
+  }
   if (!/^https?:\/\//i.test(trimmed)) {
     return `https://${trimmed}`;
   }
@@ -36,8 +42,12 @@ export function sanitizeUrl(rawUrl: string): string {
 export const createJobSchema = z.object({
   title: z.string().min(2, 'Job title must be at least 2 characters').max(120),
   company: z.string().min(2, 'Company name is required').max(100),
-  applyUrl: z.string().min(3, 'Application link is required'),
+  applyUrl: z.string().min(1, 'Application link or HR email is required'),
+  applyType: z.enum(['LINK', 'EMAIL', 'INSTRUCTION']).default('LINK').optional(),
+  applyEmail: z.string().max(120).optional(),
+  applyInstructions: z.string().max(500).optional(),
   description: z.string().min(10, 'Job description must be at least 10 characters'),
+  friendNote: z.string().max(1000).optional(),
   location: z.string().default('Remote / Hybrid'),
   jobType: z.enum(['Internship', 'Full-time', 'Co-op', 'Contract', 'Part-time']).default('Internship'),
   salary: z.string().max(80).optional(),
@@ -51,6 +61,22 @@ export const createJobSchema = z.object({
     studentName: z.string().min(1),
     studentAvatar: z.string().optional(),
   }),
+});
+
+export const updateJobSchema = z.object({
+  title: z.string().min(2).max(120).optional(),
+  company: z.string().min(2).max(100).optional(),
+  applyUrl: z.string().min(1).optional(),
+  applyType: z.enum(['LINK', 'EMAIL', 'INSTRUCTION']).optional(),
+  applyEmail: z.string().max(120).optional(),
+  applyInstructions: z.string().max(500).optional(),
+  description: z.string().optional(),
+  friendNote: z.string().max(1000).optional(),
+  location: z.string().optional(),
+  jobType: z.enum(['Internship', 'Full-time', 'Co-op', 'Contract', 'Part-time']).optional(),
+  salary: z.string().max(80).optional(),
+  deadline: z.string().optional(),
+  tags: z.array(z.string().max(30)).optional(),
 });
 
 export const updateApplicationStatusSchema = z.object({
