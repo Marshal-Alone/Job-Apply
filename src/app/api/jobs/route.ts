@@ -26,12 +26,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const primaryImageUrl =
+      result.data.imageUrl || (result.data.imageUrls && result.data.imageUrls.length > 0 ? result.data.imageUrls[0] : undefined);
+
+    const allImageUrls =
+      result.data.imageUrls && result.data.imageUrls.length > 0
+        ? result.data.imageUrls
+        : primaryImageUrl
+        ? [primaryImageUrl]
+        : [];
+
     const sanitizedData = {
       ...result.data,
       applyUrl: sanitizeUrl(result.data.applyUrl),
       salary: result.data.salary || undefined,
       deadline: result.data.deadline || undefined,
-      imageUrl: result.data.imageUrl || undefined,
+      imageUrl: primaryImageUrl,
+      imageUrls: allImageUrls,
     };
 
     const newJob = await createJob(sanitizedData);

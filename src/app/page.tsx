@@ -24,7 +24,7 @@ export default function Home() {
   const [activeStudent, setActiveStudent] = useState<Student | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
 
   // Modals
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
@@ -90,6 +90,16 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    // Restore theme preference (default to dark)
+    const savedTheme = typeof window !== 'undefined' ? localStorage.getItem('peerapply_theme') : null;
+    if (savedTheme === 'light') {
+      setDarkMode(false);
+      document.documentElement.classList.remove('dark');
+    } else {
+      setDarkMode(true);
+      document.documentElement.classList.add('dark');
+    }
+
     fetchStudents();
     fetchJobs();
 
@@ -216,13 +226,16 @@ export default function Home() {
     showToast(`🚀 "${newJob.title}" posted to shared board!`, 'success');
   };
 
-  // Toggle Dark Mode
+  // Toggle Dark Mode with persistence
   const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    if (!darkMode) {
+    const next = !darkMode;
+    setDarkMode(next);
+    if (next) {
       document.documentElement.classList.add('dark');
+      if (typeof window !== 'undefined') localStorage.setItem('peerapply_theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
+      if (typeof window !== 'undefined') localStorage.setItem('peerapply_theme', 'light');
     }
   };
 
@@ -347,6 +360,7 @@ export default function Home() {
                 onApply={handleApply}
                 onUpdateStatus={handleUpdateStatus}
                 onDeleteJob={handleDeleteJob}
+                onSelectJob={(job) => setSelectedJob(job)}
               />
             ))}
           </div>
@@ -372,23 +386,7 @@ export default function Home() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-4 text-center text-xs text-slate-400">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-600 dark:text-slate-300">
-              PeerApply Nexus
-            </span>
-            <span>•</span>
-            <span>Marshal &amp; Vaishnavi Job Tracking</span>
-          </div>
-          <div className="flex items-center gap-3 text-[11px]">
-            <span>MongoDB Synchronized</span>
-            <span>•</span>
-            <span>AI Multimodal Parsing</span>
-          </div>
-        </div>
-      </footer>
+
 
       {/* Modals & Drawers */}
       {isAddJobOpen && activeStudent && (

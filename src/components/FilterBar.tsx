@@ -50,7 +50,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             { id: 'ALL', label: 'All Jobs' },
             { id: 'UNAPPLIED', label: 'Not Applied Yet' },
             { id: 'APPLIED', label: '✓ Applied by Me' },
-            { id: 'INTERVIEWING', label: '🎯 Interviewing' },
           ].map((tab) => (
             <button
               key={tab.id}

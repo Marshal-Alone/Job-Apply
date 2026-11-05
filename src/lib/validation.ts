@@ -45,6 +45,7 @@ export const createJobSchema = z.object({
   tags: z.array(z.string().max(30)).default([]),
   source: z.enum(['WhatsApp', 'LinkedIn', 'Campus Drive', 'Career Portal', 'Flyer', 'Other']).default('WhatsApp'),
   imageUrl: z.string().optional(),
+  imageUrls: z.array(z.string()).optional(),
   postedBy: z.object({
     studentId: z.string().min(1),
     studentName: z.string().min(1),
@@ -64,4 +65,5 @@ export const updateApplicationStatusSchema = z.object({
 export const parseJobWithAISchema = z.object({
   rawText: z.string().optional(),
   imageUrl: z.string().optional(), // base64 or URL
+  imageUrls: z.array(z.string()).optional(),
 });

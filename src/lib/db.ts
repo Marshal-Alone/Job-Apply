@@ -128,6 +128,7 @@ export async function getJobs(): Promise<Job[]> {
       return jobs.map((j) => ({
         ...j,
         id: j.id || (j as unknown as { _id: { toString(): string } })._id.toString(),
+        imageUrls: j.imageUrls || (j.imageUrl ? [j.imageUrl] : []),
       }));
     } catch (e) {
       console.warn('Failed reading from MongoDB collection, falling back:', e);
@@ -141,9 +142,12 @@ export async function getJobs(): Promise<Job[]> {
     local.jobs = filtered;
     writeLocalDb(local);
   }
-  return filtered.sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  return filtered
+    .map((j) => ({
+      ...j,
+      imageUrls: j.imageUrls || (j.imageUrl ? [j.imageUrl] : []),
+    }))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function getJobById(id: string): Promise<Job | null> {

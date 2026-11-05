@@ -40,6 +40,7 @@ export interface Job {
   tags: string[];
   source: 'WhatsApp' | 'LinkedIn' | 'Campus Drive' | 'Career Portal' | 'Flyer' | 'Other';
   imageUrl?: string;
+  imageUrls?: string[];
   postedBy: {
     studentId: string;
     studentName: string;
