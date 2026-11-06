@@ -5,20 +5,14 @@ import { Job, Student } from '@/lib/types';
 import {
   X,
   ExternalLink,
-  Calendar,
-  MapPin,
-  DollarSign,
   Image as ImageIcon,
   ChevronLeft,
   ChevronRight,
   Maximize2,
-  Sparkles,
-  MessageSquare,
   Mail,
   Globe,
   Edit3,
   Check,
-  Send,
 } from 'lucide-react';
 import { formatTimeAgo } from '@/lib/utils';
 import { ApplyActionModal } from './ApplyActionModal';
@@ -80,7 +74,6 @@ export const JobModal: React.FC<JobModalProps> = ({
   const activeApp = activeStudent ? currentJob.applications?.[activeStudent.id] : undefined;
   const isApplied = activeApp?.status === 'APPLIED';
 
-  // Normalize all attached guide images
   const images: string[] =
     currentJob.imageUrls && currentJob.imageUrls.length > 0
       ? currentJob.imageUrls
@@ -165,13 +158,12 @@ export const JobModal: React.FC<JobModalProps> = ({
 
   return (
     <>
-      {/* Fullscreen Lightbox Overlay */}
+      {/* Lightbox Overlay */}
       {isLightboxOpen && images.length > 0 && (
         <div
           className="fixed inset-0 bg-black/95 z-[60] flex flex-col items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-150"
           onClick={() => setIsLightboxOpen(false)}
         >
-          {/* Top Bar */}
           <div className="absolute top-4 left-4 right-4 flex items-center justify-between text-white z-10">
             <div className="flex items-center gap-2 text-xs font-semibold">
               <ImageIcon className="w-4 h-4 text-blue-400" />
@@ -181,13 +173,12 @@ export const JobModal: React.FC<JobModalProps> = ({
             </div>
             <button
               onClick={() => setIsLightboxOpen(false)}
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition"
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Main Encircled Image */}
           <div
             className="relative max-w-5xl max-h-[85vh] w-full flex items-center justify-center"
             onClick={(e) => e.stopPropagation()}
@@ -202,13 +193,13 @@ export const JobModal: React.FC<JobModalProps> = ({
               <>
                 <button
                   onClick={handlePrevImage}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/70 hover:bg-black/90 text-white transition border border-white/20"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/70 hover:bg-black/90 text-white transition-colors border border-white/20"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <button
                   onClick={handleNextImage}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/70 hover:bg-black/90 text-white transition border border-white/20"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/70 hover:bg-black/90 text-white transition-colors border border-white/20"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
@@ -216,17 +207,16 @@ export const JobModal: React.FC<JobModalProps> = ({
             )}
           </div>
 
-          {/* Thumbnail Bar in Lightbox */}
           {images.length > 1 && (
             <div
-              className="absolute bottom-4 flex items-center gap-2 p-2 rounded-2xl bg-black/60 backdrop-blur-sm max-w-md overflow-x-auto"
+              className="absolute bottom-4 flex items-center gap-2 p-2 rounded-2xl bg-black/60 backdrop-blur-xs max-w-md overflow-x-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {images.map((img, idx) => (
                 <button
                   key={idx}
                   onClick={() => setActiveImageIndex(idx)}
-                  className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition shrink-0 ${
+                  className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition-transform ${
                     activeImageIndex === idx
                       ? 'border-blue-500 scale-105'
                       : 'border-transparent opacity-60 hover:opacity-100'
@@ -240,111 +230,93 @@ export const JobModal: React.FC<JobModalProps> = ({
         </div>
       )}
 
-      {/* Main Job Modal */}
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-3xl my-8 p-6 md:p-8 shadow-2xl animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-          {/* Top Header */}
-          <div className="flex items-start justify-between pb-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+      {/* Main Job Details Modal */}
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-2xl my-8 p-6 shadow-xl animate-in fade-in duration-150 flex flex-col max-h-[90vh]">
+          {/* Header */}
+          <div className="flex items-start justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800 shrink-0">
             <div>
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <span className="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
                   {currentJob.company}
                 </span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                  {currentJob.jobType}
-                </span>
                 <span className="text-xs text-slate-400">
                   Posted {formatTimeAgo(currentJob.createdAt)} by {currentJob.postedBy?.studentName || 'Friend'}
                 </span>
               </div>
-              <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
                 {currentJob.title}
               </h2>
             </div>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Scrollable Body - Ordered exactly as requested: 1. Friend Note, 2. AI Summary, 3. Images */}
-          <div className="overflow-y-auto py-4 space-y-5 flex-1 pr-1">
-            {/* 1. FIRST: Whatever note the friend added when adding the job */}
-            {currentJob.friendNote ? (
-              <div className="p-4 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-300/80 dark:border-amber-500/40 shadow-xs">
-                <div className="flex items-center gap-2 mb-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
-                  <MessageSquare className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  <span>Note from {currentJob.postedBy?.studentName || 'Friend'}:</span>
-                </div>
-                <p className="text-xs sm:text-sm font-medium leading-relaxed text-slate-800 dark:text-slate-100 pl-6">
-                  &ldquo;{currentJob.friendNote}&rdquo;
+          {/* Scrollable Content */}
+          <div className="overflow-y-auto py-4 space-y-4 flex-1 pr-1">
+            {/* Description / Instructions */}
+            {currentJob.description && (
+              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40">
+                <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Job Details &amp; Notes
+                </h4>
+                <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-line">
+                  {currentJob.description}
                 </p>
               </div>
-            ) : null}
+            )}
 
-            {/* 2. THEN: AI Summary */}
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 bg-slate-50/80 dark:bg-slate-800/40">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                  AI Summary
-                </h4>
-              </div>
-              <div className="text-xs leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-line">
-                {currentJob.description}
-              </div>
-            </div>
-
-            {/* 3. THEN: Guide Screenshots & Images Gallery */}
+            {/* Screenshots & Flyers Gallery */}
             {images.length > 0 && (
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 bg-slate-50/70 dark:bg-slate-950/50">
-                <div className="flex items-center justify-between mb-3">
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3.5 bg-slate-50/60 dark:bg-slate-950/40">
+                <div className="flex items-center justify-between mb-2.5">
                   <div className="flex items-center gap-2">
-                    <ImageIcon className="w-4 h-4 text-indigo-500" />
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                      Guide Screenshots &amp; Instructions ({images.length})
+                    <ImageIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                      Screenshots &amp; Instructions ({images.length})
                     </span>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] text-slate-400">
-                      Image {activeImageIndex + 1} of {images.length}
+                      {activeImageIndex + 1} of {images.length}
                     </span>
                     <button
                       onClick={() => setIsLightboxOpen(true)}
-                      className="p-1 rounded-lg text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition flex items-center gap-1 text-xs"
+                      className="p-1 rounded-lg text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors flex items-center gap-1 text-xs"
                       title="Enlarge image"
                     >
                       <Maximize2 className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline text-[11px]">Enlarge</span>
+                      <span className="text-[11px]">Enlarge</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Main Image Viewer */}
-                <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-black/10 dark:bg-black/40 flex items-center justify-center min-h-[220px] max-h-[420px]">
+                <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 flex items-center justify-center min-h-[200px] max-h-[380px]">
                   <img
                     src={images[activeImageIndex]}
                     alt={`Screenshot ${activeImageIndex + 1}`}
-                    className="w-full max-h-[420px] object-contain cursor-pointer transition hover:opacity-95"
+                    className="w-full max-h-[380px] object-contain cursor-pointer"
                     onClick={() => setIsLightboxOpen(true)}
                   />
 
-                  {/* Navigation Arrows (if multiple images) */}
                   {images.length > 1 && (
                     <>
                       <button
                         onClick={handlePrevImage}
-                        className="absolute left-2.5 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-black/80 text-white transition shadow-md"
+                        className="absolute left-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors"
                         title="Previous screenshot"
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </button>
                       <button
                         onClick={handleNextImage}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-black/80 text-white transition shadow-md"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors"
                         title="Next screenshot"
                       >
                         <ChevronRight className="w-4 h-4" />
@@ -353,16 +325,16 @@ export const JobModal: React.FC<JobModalProps> = ({
                   )}
                 </div>
 
-                {/* Thumbnail Strip */}
+                {/* Thumbnails */}
                 {images.length > 1 && (
-                  <div className="flex items-center gap-2 pt-3 overflow-x-auto pb-1">
+                  <div className="flex items-center gap-2 pt-2.5 overflow-x-auto pb-1">
                     {images.map((img, idx) => (
                       <button
                         key={idx}
                         onClick={() => setActiveImageIndex(idx)}
-                        className={`relative rounded-xl overflow-hidden border-2 transition shrink-0 w-16 h-16 bg-black/10 ${
+                        className={`relative rounded-lg overflow-hidden border-2 transition-colors shrink-0 w-14 h-14 bg-black/10 ${
                           activeImageIndex === idx
-                            ? 'border-blue-600 ring-2 ring-blue-500/20 scale-105'
+                            ? 'border-blue-600 ring-2 ring-blue-500/20'
                             : 'border-slate-200 dark:border-slate-800 opacity-60 hover:opacity-100'
                         }`}
                       >
@@ -377,58 +349,8 @@ export const JobModal: React.FC<JobModalProps> = ({
               </div>
             )}
 
-            {/* Details & Metadata Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                <span className="text-[11px] text-slate-400 block mb-1">Location</span>
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200">
-                  <MapPin className="w-3.5 h-3.5 text-blue-500" />
-                  <span>{currentJob.location}</span>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                <span className="text-[11px] text-slate-400 block mb-1">Stipend / Salary</span>
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                  <DollarSign className="w-3.5 h-3.5" />
-                  <span>{currentJob.salary || 'Not specified'}</span>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                <span className="text-[11px] text-slate-400 block mb-1">Deadline</span>
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>{currentJob.deadline || 'Rolling basis'}</span>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                <span className="text-[11px] text-slate-400 block mb-1">Shared Via</span>
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  {currentJob.source}
-                </span>
-              </div>
-            </div>
-
-            {/* Tags */}
-            {currentJob.tags && currentJob.tags.length > 0 && (
-              <div>
-                <div className="flex flex-wrap gap-2">
-                  {currentJob.tags.map((tag, idx) => (
-                    <span
-                      key={idx}
-                      className="text-xs font-medium px-3 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/60"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 🎯 Apply Action Verification & Quick Edit */}
-            <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 space-y-3">
+            {/* What clicking "Apply" does: Verification & Edit */}
+            <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 space-y-2.5">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
                   {isEmailApply ? (
@@ -436,51 +358,43 @@ export const JobModal: React.FC<JobModalProps> = ({
                   ) : (
                     <Globe className="w-4 h-4 text-blue-500 shrink-0" />
                   )}
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    Apply Action:
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                    What clicking &quot;Apply&quot; does:
                   </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                    {isEmailApply ? '✉️ HR Email Popup' : '🌐 Web Portal Link'}
+                  <span className="text-xs px-2 py-0.5 rounded-md font-medium bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                    {isEmailApply ? 'HR Email Popup' : 'Web Link'}
                   </span>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setIsEditingAction(!isEditingAction)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition"
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
-                  <span>{isEditingAction ? 'Cancel' : 'Change / Verify Action'}</span>
+                  <span>{isEditingAction ? 'Cancel' : 'Change'}</span>
                 </button>
               </div>
 
-              {/* View / Verify Mode */}
               {!isEditingAction ? (
-                <div className="text-xs text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                <div className="text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200/80 dark:border-slate-800">
                   {isEmailApply ? (
                     <div className="space-y-1">
-                      <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-semibold">
-                        <Mail className="w-3.5 h-3.5" />
-                        <span>Clicking &quot;Apply&quot; opens popup with instruction:</span>
-                      </div>
-                      <p className="font-medium text-slate-800 dark:text-slate-100 pl-5 italic">
-                        &ldquo;{applyInstructions}&rdquo;
+                      <p className="font-medium text-slate-800 dark:text-slate-100">
+                        {applyInstructions}
                       </p>
-                      <p className="text-[11px] text-slate-400 pl-5">
-                        HR Email: <code className="font-mono text-indigo-500">{detectedEmail}</code> (with 1-click Copy &amp; Open Mail App buttons)
+                      <p className="text-[11px] text-slate-400">
+                        Email: <code className="font-mono text-indigo-500">{detectedEmail}</code> (popup shows Copy &amp; Open Mail App buttons)
                       </p>
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-semibold">
-                        <Globe className="w-3.5 h-3.5" />
-                        <span>Clicking &quot;Apply&quot; opens web portal link:</span>
-                      </div>
+                      <span className="text-slate-500 block text-[11px]">Opens destination URL:</span>
                       <a
                         href={currentJob.applyUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block font-mono text-blue-600 dark:text-blue-400 hover:underline pl-5 truncate"
+                        className="font-mono text-blue-600 dark:text-blue-400 hover:underline block truncate"
                       >
                         {currentJob.applyUrl}
                       </a>
@@ -488,20 +402,19 @@ export const JobModal: React.FC<JobModalProps> = ({
                   )}
                 </div>
               ) : (
-                /* Edit Mode */
-                <div className="space-y-3 pt-1 border-t border-slate-200 dark:border-slate-800 animate-in fade-in duration-150">
-                  <div className="flex rounded-xl bg-slate-200/80 dark:bg-slate-800/80 p-0.5 text-xs font-semibold max-w-fit">
+                <div className="space-y-2.5 pt-1 border-t border-slate-200 dark:border-slate-800">
+                  <div className="flex rounded-lg bg-slate-200/80 dark:bg-slate-800/80 p-0.5 text-xs font-medium max-w-fit">
                     <button
                       type="button"
                       onClick={() => setEditActionType('LINK')}
-                      className={`flex items-center gap-1 px-3 py-1 rounded-lg transition ${
+                      className={`flex items-center gap-1 px-3 py-1 rounded-md transition-colors ${
                         editActionType === 'LINK'
                           ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
                           : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
                       }`}
                     >
-                      <Globe className="w-3 h-3" />
-                      <span>Open Web Link</span>
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>Web Link</span>
                     </button>
                     <button
                       type="button"
@@ -511,13 +424,13 @@ export const JobModal: React.FC<JobModalProps> = ({
                           setEditInstructions(`Send resume on HR email: ${editEmail}`);
                         }
                       }}
-                      className={`flex items-center gap-1 px-3 py-1 rounded-lg transition ${
+                      className={`flex items-center gap-1 px-3 py-1 rounded-md transition-colors ${
                         editActionType === 'EMAIL'
                           ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
                           : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
                       }`}
                     >
-                      <Mail className="w-3 h-3" />
+                      <Mail className="w-3.5 h-3.5" />
                       <span>HR Email Popup</span>
                     </button>
                   </div>
@@ -525,12 +438,11 @@ export const JobModal: React.FC<JobModalProps> = ({
                   {editActionType === 'EMAIL' ? (
                     <div className="space-y-2">
                       <div>
-                        <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">
-                          HR Email Address:
+                        <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-0.5">
+                          HR Email
                         </label>
                         <input
                           type="email"
-                          placeholder="e.g. hr@gmail.com"
                           value={editEmail}
                           onChange={(e) => {
                             const val = e.target.value;
@@ -539,34 +451,31 @@ export const JobModal: React.FC<JobModalProps> = ({
                               setEditInstructions(`Send resume on HR email: ${val}`);
                             }
                           }}
-                          className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                          className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
                         />
                       </div>
-
                       <div>
-                        <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">
-                          Popup Message / Instruction:
+                        <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-0.5">
+                          Popup Instruction
                         </label>
                         <input
                           type="text"
-                          placeholder="e.g. Send resume on HR email: hr@gmail.com"
                           value={editInstructions}
                           onChange={(e) => setEditInstructions(e.target.value)}
-                          className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                          className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
                         />
                       </div>
                     </div>
                   ) : (
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">
-                        Application Website URL:
+                      <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-0.5">
+                        Job URL
                       </label>
                       <input
                         type="text"
-                        placeholder="https://careers.company.com/apply/..."
                         value={editUrl}
                         onChange={(e) => setEditUrl(e.target.value)}
-                        className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                        className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
                       />
                     </div>
                   )}
@@ -583,10 +492,10 @@ export const JobModal: React.FC<JobModalProps> = ({
                       type="button"
                       disabled={isSavingAction}
                       onClick={handleSaveActionEdit}
-                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition"
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
                     >
                       <Check className="w-3.5 h-3.5" />
-                      <span>{isSavingAction ? 'Saving...' : 'Save Apply Action'}</span>
+                      <span>{isSavingAction ? 'Saving...' : 'Save'}</span>
                     </button>
                   </div>
                 </div>
@@ -594,27 +503,27 @@ export const JobModal: React.FC<JobModalProps> = ({
             </div>
           </div>
 
-          {/* Modal Action Footer */}
-          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2 shrink-0">
+          {/* Footer Action */}
+          <div className="pt-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5 shrink-0">
             <button
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
               Close
             </button>
 
             <button
               onClick={handleApplyClick}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition shadow-md active:scale-[0.98]"
+              className="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs active:scale-[0.99]"
             >
               {isEmailApply ? (
                 <>
                   <Mail className="w-4 h-4" />
-                  <span>{isApplied ? 'View HR Email & Popup' : 'Apply via HR Email'}</span>
+                  <span>{isApplied ? 'View HR Email Popup' : 'Apply via HR Email'}</span>
                 </>
               ) : (
                 <>
-                  <span>{isApplied ? 'Re-open Portal' : 'Apply Now'}</span>
+                  <span>{isApplied ? 'Re-open Application' : 'Apply Now'}</span>
                   <ExternalLink className="w-4 h-4" />
                 </>
               )}
@@ -623,7 +532,7 @@ export const JobModal: React.FC<JobModalProps> = ({
         </div>
       </div>
 
-      {/* Apply Action Popup Modal */}
+      {/* Apply Action Popup */}
       {isApplyPopupOpen && (
         <ApplyActionModal
           job={currentJob}

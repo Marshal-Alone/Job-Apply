@@ -3,7 +3,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Student, Job } from '@/lib/types';
 import {
-  Sparkles,
   Upload,
   Link as LinkIcon,
   Check,
@@ -11,7 +10,6 @@ import {
   X,
   Loader2,
   Image as ImageIcon,
-  Plus,
   Clipboard,
   Mail,
   Globe,
@@ -24,7 +22,7 @@ interface AddJobModalProps {
   onJobAdded: (job: Job) => void;
 }
 
-// Client-side image resize helper to keep database payloads lightweight
+// Client-side image resize helper to keep payloads fast and lightweight
 function compressImage(file: File, maxWidth = 1600, quality = 0.85): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -58,51 +56,69 @@ function compressImage(file: File, maxWidth = 1600, quality = 0.85): Promise<str
   });
 }
 
+function extractDomainName(url: string): string {
+  try {
+    const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
+    const host = parsed.hostname.replace(/^www\./, '');
+    const parts = host.split('.');
+    if (parts.length >= 2) {
+      const name = parts[0];
+      return name.charAt(0).toUpperCase() + name.slice(1);
+    }
+    return 'Company';
+  } catch {
+    return 'Company';
+  }
+}
+
 export const AddJobModal: React.FC<AddJobModalProps> = ({
   isOpen,
   onClose,
   activeStudent,
   onJobAdded,
 }) => {
-  const [inputVal, setInputVal] = useState('');
-  const [friendNote, setFriendNote] = useState('');
+  // Only the essential fields requested by user:
+  // 1. Job link
+  // 2. Company name (optional)
+  // 3. What clicking "Apply" does
+  // 4. Description (optional)
+  // 5. Images
+  // 6. Apply btn (Submit)
+  const [jobLink, setJobLink] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [applyActionType, setApplyActionType] = useState<'LINK' | 'EMAIL'>('LINK');
+  const [hrEmail, setHrEmail] = useState('');
+  const [hrInstructions, setHrInstructions] = useState('');
+  const [description, setDescription] = useState('');
   const [images, setImages] = useState<string[]>([]);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pasteSuccess, setPasteSuccess] = useState<string | null>(null);
 
-  // Form Fields for manual adjustment
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [title, setTitle] = useState('');
-  const [company, setCompany] = useState('');
-  const [applyUrl, setApplyUrl] = useState('');
-  const [applyActionType, setApplyActionType] = useState<'LINK' | 'EMAIL'>('LINK');
-  const [applyEmail, setApplyEmail] = useState('');
-  const [applyInstructions, setApplyInstructions] = useState('');
-  const [location, setLocation] = useState('Remote');
-  const [description, setDescription] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Handle typing in main input with automatic email / link detection
-  const handleInputChange = (val: string) => {
-    setInputVal(val);
+  // Auto-detect email or URL when typing in jobLink
+  const handleLinkChange = (val: string) => {
+    setJobLink(val);
     const emailMatch = val.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
     const hasUrl = /https?:\/\//i.test(val);
+
     if (emailMatch && !hasUrl) {
       setApplyActionType('EMAIL');
-      setApplyEmail(emailMatch[0]);
-      if (!applyInstructions || applyInstructions.startsWith('Send resume on HR email:')) {
-        setApplyInstructions(`Send resume on HR email: ${emailMatch[0]}`);
+      setHrEmail(emailMatch[0]);
+      if (!hrInstructions || hrInstructions.startsWith('Send resume on HR email:')) {
+        setHrInstructions(`Send resume on HR email: ${emailMatch[0]}`);
       }
     } else if (hasUrl) {
-      setApplyActionType('LINK');
-      const urlMatch = val.match(/https?:\/\/[^\s]+/i);
-      if (urlMatch && !applyUrl) {
-        setApplyUrl(urlMatch[0]);
+      if (!companyName) {
+        const guessed = extractDomainName(val);
+        if (guessed && guessed !== 'Company') {
+          setCompanyName(guessed);
+        }
       }
     }
   };
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Helper to add image file(s)
   const addImageFiles = useCallback(async (files: FileList | File[]) => {
@@ -127,7 +143,7 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({
     }
   }, []);
 
-  // Global paste handler when modal is active
+  // Global paste handler when modal is active (Ctrl+V anywhere in modal pastes image)
   useEffect(() => {
     if (!isOpen) return;
 
@@ -158,7 +174,6 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       addImageFiles(e.target.files);
-      // Reset input value so same files can be chosen again if needed
       e.target.value = '';
     }
   };
@@ -167,11 +182,13 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({
     setImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
-  // Instant Extract and Post Job
-  const handleExtractAndSave = async (e: React.FormEvent) => {
+  // Submit Job
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputVal.trim() && images.length === 0) {
-      setError('Please enter a job link, message, or attach a screenshot/flyer.');
+
+    const trimmedLink = jobLink.trim();
+    if (!trimmedLink && images.length === 0) {
+      setError('Please provide a job link or attach at least one screenshot.');
       return;
     }
 
@@ -179,81 +196,41 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({
     setError(null);
 
     try {
-      // Step 1: AI / destination link extraction
-      const parseRes = await fetch('/api/ai/parse', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rawText: inputVal.trim() || undefined,
-          imageUrl: images[0] || undefined,
-          imageUrls: images,
-        }),
-      });
+      const isEmailAction = applyActionType === 'EMAIL' || (hrEmail && !trimmedLink.startsWith('http'));
+      const finalEmail = hrEmail.trim() || (isEmailAction ? trimmedLink.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)?.[0] : undefined);
+      const finalApplyUrl = isEmailAction && finalEmail ? `mailto:${finalEmail}` : (trimmedLink || '#');
+      const finalInstructions = isEmailAction
+        ? (hrInstructions.trim() || (finalEmail ? `Send resume on HR email: ${finalEmail}` : 'Send resume to HR'))
+        : undefined;
 
-      const parseJson = await parseRes.json();
-      let extracted = parseJson.data;
+      const derivedCompany =
+        companyName.trim() ||
+        (trimmedLink ? extractDomainName(trimmedLink) : '') ||
+        'Hiring Company';
 
-      const urlMatch = inputVal.match(/https?:\/\/[^\s]+/i);
-      const emailMatch = inputVal.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+      const derivedTitle = 'Software Developer';
 
-      if (!extracted || !extracted.applyUrl) {
-        extracted = {
-          title: title || 'Software Developer',
-          company: company || 'Company',
-          applyUrl: urlMatch ? urlMatch[0] : inputVal.trim(),
-          location: 'Remote',
-          description: inputVal.replace(/https?:\/\/[^\s]+/gi, '').trim() || 'Job opening shared.',
-        };
-      }
+      const finalDescription =
+        description.trim() ||
+        (isEmailAction && finalEmail
+          ? `Send resume directly to ${finalEmail}. Check attached guide screenshots for details.`
+          : 'Apply via direct career link. Check attached guide screenshots for step-by-step instructions.');
 
-      // Determine Apply Action (Link vs Email Popup)
-      const finalApplyType =
-        applyActionType === 'EMAIL' || (!urlMatch && (applyEmail || emailMatch || extracted.applyType === 'EMAIL'))
-          ? 'EMAIL'
-          : 'LINK';
-
-      const finalEmail =
-        applyEmail.trim() ||
-        (emailMatch ? emailMatch[0] : '') ||
-        extracted.applyEmail ||
-        '';
-
-      const finalInstructions =
-        applyInstructions.trim() ||
-        extracted.applyInstructions ||
-        (finalEmail ? `Send resume on HR email: ${finalEmail}` : undefined);
-
-      let finalApplyUrl = applyUrl.trim() || extracted.applyUrl || '';
-      if (finalApplyType === 'EMAIL' && finalEmail) {
-        finalApplyUrl = `mailto:${finalEmail}`;
-      } else if (!finalApplyUrl) {
-        finalApplyUrl = urlMatch ? urlMatch[0] : inputVal.trim() || '#';
-      }
-
-      // Clean user text (without URLs) to use as default friend note if not explicitly provided
-      const cleanUserText = inputVal.replace(/https?:\/\/[^\s]+/gi, '').trim();
-      const finalFriendNote =
-        friendNote.trim() || (cleanUserText.length > 5 ? cleanUserText : undefined);
-
-      // Final job payload with multiple images and friend note
       const jobPayload = {
-        title: title.trim() || extracted.title || 'Software Developer',
-        company: company.trim() || extracted.company || 'Company',
-        applyType: finalApplyType,
+        title: derivedTitle,
+        company: derivedCompany,
+        applyType: isEmailAction ? 'EMAIL' : 'LINK',
         applyUrl: finalApplyUrl,
-        applyEmail: finalEmail || undefined,
+        applyEmail: finalEmail,
         applyInstructions: finalInstructions,
-        location: location.trim() || extracted.location || 'Remote',
+        location: 'Remote / Hybrid',
         jobType: 'Internship',
         salary: undefined,
         deadline: undefined,
         tags: [],
         source: images.length > 0 ? 'Flyer' : 'WhatsApp',
-        description:
-          (description.trim() || extracted.description || 'Open link for full job details and application.')
-            .replace(/https?:\/\/[^\s]+/gi, '')
-            .trim(),
-        friendNote: finalFriendNote,
+        description: finalDescription,
+        friendNote: description.trim() || undefined,
         imageUrl: images[0] || undefined,
         imageUrls: images,
         postedBy: {
@@ -263,209 +240,207 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({
         },
       };
 
-      // Step 2: Save to Database
-      const createRes = await fetch('/api/jobs', {
+      const res = await fetch('/api/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(jobPayload),
       });
 
-      const createJson = await createRes.json();
-      if (createJson.success && createJson.data) {
-        onJobAdded(createJson.data);
+      const json = await res.json();
+      if (json.success && json.data) {
+        onJobAdded(json.data);
         onClose();
       } else {
-        setError(createJson.detail || 'Failed to save job.');
+        setError(json.detail || json.message || 'Failed to post job. Please try again.');
       }
     } catch (err) {
-      console.error('Job submission failed:', err);
-      setError('Error parsing or posting job. Please try again.');
+      console.error('Failed to post job:', err);
+      setError('An error occurred while posting the job. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const peerName = activeStudent.id === 'marshal' ? 'Vaishnavi' : 'Marshal';
-
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-auto max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-xl animate-in fade-in duration-150 my-auto max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center">
               <LinkIcon className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                Share a Job with {peerName}
+              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                Share Job Opening
               </h2>
-              <p className="text-[11px] text-slate-500">
-                Paste the apply link, flyer, or screenshots to guide them
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Quickly share links and guide screenshots with your peer
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            title="Close dialog"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {error && (
-          <div className="my-2.5 flex items-center gap-2 p-2.5 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900 text-xs shrink-0">
+          <div className="mt-3 flex items-center gap-2 p-2.5 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900 text-xs shrink-0">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {pasteSuccess && (
-          <div className="my-2 flex items-center gap-2 p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900 text-xs animate-in fade-in duration-150 shrink-0">
+          <div className="mt-3 flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900 text-xs shrink-0">
             <Check className="w-4 h-4 shrink-0" />
-            <span>{pasteSuccess} from clipboard!</span>
+            <span>{pasteSuccess} from clipboard</span>
           </div>
         )}
 
-        <form onSubmit={handleExtractAndSave} className="space-y-3.5 mt-3 overflow-y-auto pr-1 flex-1">
-          {/* Main Link or Message Input */}
+        {/* Clean, essential form fields only */}
+        <form onSubmit={handleSubmit} className="space-y-4 mt-4 overflow-y-auto pr-1 flex-1">
+          {/* 1. Job Link */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Job Apply Link or WhatsApp Forward
+            <label className="block text-xs font-semibold text-slate-900 dark:text-slate-200 mb-1">
+              Job Link
             </label>
-            <textarea
-              rows={3}
-              placeholder="Paste link or text here, e.g. https://careers.jio.com/... or 'Send resume to hr@gmail.com' (You can also press Ctrl+V to paste screenshots!)"
-              value={inputVal}
-              onChange={(e) => handleInputChange(e.target.value)}
-              className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <input
+              type="text"
+              required={images.length === 0}
+              placeholder="https://careers.company.com/jobs/..."
+              value={jobLink}
+              onChange={(e) => handleLinkChange(e.target.value)}
+              className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <p className="text-[11px] text-slate-400 mt-1">
-              AI automatically extracts company, title, links, and HR emails from text or screenshots.
-            </p>
           </div>
 
-          {/* What happens when clicking "Apply"? */}
-          <div className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 space-y-2.5">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <label className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <span>🎯 What clicking &quot;Apply&quot; does:</span>
-              </label>
+          {/* 2. Company Name (Optional) */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-900 dark:text-slate-200 mb-1">
+              Company Name <span className="text-slate-400 font-normal">(optional)</span>
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Google, Jio, Stripe"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
-              {/* Action Toggle */}
-              <div className="flex rounded-xl bg-slate-200/70 dark:bg-slate-800/80 p-0.5 text-[11px] font-semibold">
+          {/* 3. What clicking "Apply" does */}
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-xs font-semibold text-slate-900 dark:text-slate-200">
+                What clicking &quot;Apply&quot; does:
+              </span>
+
+              {/* Segmented control */}
+              <div className="flex rounded-lg bg-slate-200/80 dark:bg-slate-800/90 p-0.5 text-xs font-medium">
                 <button
                   type="button"
                   onClick={() => setApplyActionType('LINK')}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition ${
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors ${
                     applyActionType === 'LINK'
                       ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                   }`}
                 >
-                  <Globe className="w-3 h-3" />
+                  <Globe className="w-3.5 h-3.5" />
                   <span>Open Web Link</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setApplyActionType('EMAIL');
-                    if (!applyInstructions && applyEmail) {
-                      setApplyInstructions(`Send resume on HR email: ${applyEmail}`);
+                    if (!hrInstructions && hrEmail) {
+                      setHrInstructions(`Send resume on HR email: ${hrEmail}`);
                     }
                   }}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition ${
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors ${
                     applyActionType === 'EMAIL'
                       ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                   }`}
                 >
-                  <Mail className="w-3 h-3" />
+                  <Mail className="w-3.5 h-3.5" />
                   <span>HR Email Popup</span>
                 </button>
               </div>
             </div>
 
             {applyActionType === 'EMAIL' ? (
-              <div className="space-y-2 pt-0.5">
+              <div className="space-y-2.5 pt-1">
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-0.5">
-                    HR Email Address:
+                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-0.5">
+                    HR Email Address
                   </label>
                   <input
                     type="email"
-                    placeholder="e.g. hr@gmail.com or careers@company.com"
-                    value={applyEmail}
+                    placeholder="e.g. hr@company.com"
+                    value={hrEmail}
                     onChange={(e) => {
                       const email = e.target.value;
-                      setApplyEmail(email);
-                      if (!applyInstructions || applyInstructions.startsWith('Send resume on HR email:')) {
-                        setApplyInstructions(`Send resume on HR email: ${email}`);
+                      setHrEmail(email);
+                      if (!hrInstructions || hrInstructions.startsWith('Send resume on HR email:')) {
+                        setHrInstructions(`Send resume on HR email: ${email}`);
                       }
                     }}
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-0.5">
-                    Popup Message / Instructions for {peerName}:
+                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-0.5">
+                    Popup Message / Instruction
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Send resume on HR email: hr@gmail.com"
-                    value={applyInstructions}
-                    onChange={(e) => setApplyInstructions(e.target.value)}
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="e.g. Send resume on HR email: hr@company.com"
+                    value={hrInstructions}
+                    onChange={(e) => setHrInstructions(e.target.value)}
+                    className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                </div>
-
-                <div className="p-2 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 text-[11px] text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/50">
-                  ✨ When {peerName} clicks Apply, a popup will show: &ldquo;{applyInstructions || `Send resume on HR email: ${applyEmail || 'hr@gmail.com'}`}&rdquo; with 1-click Copy &amp; Send buttons.
                 </div>
               </div>
             ) : (
-              <div className="pt-0.5">
-                <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-0.5">
-                  Direct Career Link / Portal URL:
-                </label>
-                <input
-                  type="text"
-                  placeholder="https://careers.company.com/apply/..."
-                  value={applyUrl}
-                  onChange={(e) => setApplyUrl(e.target.value)}
-                  className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Clicking &quot;Apply&quot; will directly open the Job Link in a new browser tab.
+              </p>
             )}
           </div>
 
-          {/* Note for Friend */}
+          {/* 4. Description (Optional) */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              💬 Note / Tip for {peerName} (Optional)
+            <label className="block text-xs font-semibold text-slate-900 dark:text-slate-200 mb-1">
+              Description <span className="text-slate-400 font-normal">(optional)</span>
             </label>
-            <input
-              type="text"
-              placeholder={`e.g. Use referral code 409, deadline is 6 PM, check screenshot 2 for form steps...`}
-              value={friendNote}
-              onChange={(e) => setFriendNote(e.target.value)}
-              className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <textarea
+              rows={2}
+              placeholder="Add brief details, eligibility, or note for your peer..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
-          {/* Guide Screenshots / Images Gallery Section */}
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-3 bg-slate-50/60 dark:bg-slate-950/40 space-y-2.5">
+          {/* 5. Images */}
+          <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <ImageIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <span>Guide Screenshots / Flyers</span>
+              <label className="font-semibold text-slate-900 dark:text-slate-200 flex items-center gap-1.5">
+                <ImageIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                <span>Images / Screenshots</span>
                 {images.length > 0 && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
+                  <span className="text-[11px] px-2 py-0.2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">
                     {images.length}
                   </span>
                 )}
-              </span>
+              </label>
 
               <button
                 type="button"
@@ -473,7 +448,7 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({
                 className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-medium"
               >
                 <Upload className="w-3.5 h-3.5" />
-                <span>+ Upload Files</span>
+                <span>Upload Files</span>
               </button>
             </div>
 
@@ -486,37 +461,35 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({
               className="hidden"
             />
 
-            {/* Paste Hint Strip */}
-            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 text-[11px] text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900/60">
+            {/* Quick Paste Notification Strip */}
+            <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/60 text-[11px] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60">
               <div className="flex items-center gap-1.5">
-                <Clipboard className="w-3.5 h-3.5" />
-                <span>Tip: Copy any screenshot &amp; press <strong>Ctrl+V</strong> to paste directly!</span>
+                <Clipboard className="w-3.5 h-3.5 text-slate-400" />
+                <span>Tip: Copy any screenshot and press <strong>Ctrl+V</strong> to paste directly</span>
               </div>
             </div>
 
-            {/* Thumbnail Preview Grid */}
+            {/* Thumbnail Gallery Preview */}
             {images.length > 0 ? (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1 max-h-48 overflow-y-auto">
                 {images.map((img, idx) => (
                   <div
                     key={idx}
-                    className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-black/10 aspect-video flex items-center justify-center shadow-xs"
+                    className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 aspect-video flex items-center justify-center shadow-xs"
                   >
                     <img
                       src={img}
                       alt={`Guide screenshot ${idx + 1}`}
                       className="w-full h-full object-cover"
                     />
-                    {/* Index badge */}
-                    <span className="absolute bottom-1 left-1 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.2 rounded">
+                    <span className="absolute bottom-1 left-1 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
                       #{idx + 1}
                     </span>
-                    {/* Delete button */}
                     <button
                       type="button"
                       onClick={() => handleRemoveImage(idx)}
-                      className="absolute top-1 right-1 p-1 rounded-full bg-red-600 text-white opacity-80 hover:opacity-100 transition shadow-sm"
-                      title="Remove image"
+                      className="absolute top-1 right-1 p-1 rounded-full bg-red-600 text-white opacity-90 hover:opacity-100 transition-opacity"
+                      title="Remove screenshot"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -526,78 +499,36 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({
             ) : (
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="cursor-pointer border border-dashed border-slate-200 dark:border-slate-800 rounded-xl py-3 text-center hover:bg-slate-100/50 dark:hover:bg-slate-800/40 transition"
+                className="cursor-pointer border border-dashed border-slate-300 dark:border-slate-700 rounded-xl py-3.5 text-center hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
               >
-                <p className="text-[11px] text-slate-400">
-                  No images added yet. Click to browse or <strong>Ctrl+V</strong> to paste portal screenshots.
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  No images added yet. Click to upload or press <strong>Ctrl+V</strong> to paste.
                 </p>
               </div>
             )}
           </div>
 
-          {/* Toggle Manual Overrides */}
-          <div className="flex items-center justify-between text-xs pt-0.5">
-            <button
-              type="button"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-            >
-              {showAdvanced ? 'Hide manual fields' : 'Edit title / company manually'}
-            </button>
-          </div>
-
-          {/* Advanced / Optional Overrides */}
-          {showAdvanced && (
-            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[11px] text-slate-500 mb-0.5">Company Name (Optional)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Jio"
-                    value={company}
-                    onChange={(e) => setCompany(e.target.value)}
-                    className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-500 mb-0.5">Job Title (Optional)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Software Developer"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Action Row */}
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 shrink-0">
+          {/* 6. Apply btn (Submit Action Row) */}
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800 shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-3.5 py-2 rounded-xl text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={isLoading || (!inputVal.trim() && images.length === 0)}
-              className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition shadow-sm disabled:opacity-50"
+              disabled={isLoading || (!jobLink.trim() && images.length === 0)}
+              className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
             >
               {isLoading ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Extracting &amp; posting...</span>
+                  <span>Sharing job...</span>
                 </>
               ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5 text-blue-200" />
-                  <span>Post Job {images.length > 0 ? `(${images.length} images)` : ''}</span>
-                </>
+                <span>Share Job {images.length > 0 ? `(${images.length} images)` : ''}</span>
               )}
             </button>
           </div>

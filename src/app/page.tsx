@@ -257,7 +257,6 @@ export default function Home() {
           const hasApplied = app && app.status !== 'NOT_APPLIED';
           if (statusFilter === 'APPLIED' && !hasApplied) return false;
           if (statusFilter === 'UNAPPLIED' && hasApplied) return false;
-          if (statusFilter === 'INTERVIEWING' && app?.status !== 'INTERVIEWING') return false;
         }
 
         // Source Filter
@@ -375,7 +374,7 @@ export default function Home() {
             </p>
             <button
               onClick={() => setIsAddJobOpen(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition shadow-sm"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs"
             >
               <Upload className="w-3.5 h-3.5" />
               <span>Share First Job or Flyer</span>

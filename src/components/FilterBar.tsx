@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Search, Filter, SlidersHorizontal, CheckCircle2 } from 'lucide-react';
+import { Search, SlidersHorizontal } from 'lucide-react';
 
 interface FilterBarProps {
   search: string;
@@ -29,9 +29,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   onSortByChange,
 }) => {
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm mb-6 space-y-3">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-xs mb-5 space-y-3">
       {/* Search Bar + Quick Status Tabs */}
-      <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+      <div className="flex flex-col md:flex-row gap-2.5 items-stretch md:items-center justify-between">
         {/* Search */}
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -39,25 +39,25 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             type="text"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search by company (Google, Stripe), role, skill (React, Python), or tags..."
-            className="w-full text-xs pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Search by company, role, or keywords..."
+            className="w-full text-xs pl-10 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
         {/* Quick Applied Status Filter Pills */}
-        <div className="flex rounded-xl bg-slate-100 dark:bg-slate-800/60 p-1 shrink-0 overflow-x-auto">
+        <div className="flex rounded-xl bg-slate-100 dark:bg-slate-800/80 p-0.5 shrink-0 overflow-x-auto">
           {[
             { id: 'ALL', label: 'All Jobs' },
-            { id: 'UNAPPLIED', label: 'Not Applied Yet' },
-            { id: 'APPLIED', label: '✓ Applied by Me' },
+            { id: 'UNAPPLIED', label: 'Not Applied' },
+            { id: 'APPLIED', label: 'Applied' },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => onStatusFilterChange(tab.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
                 statusFilter === tab.id
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs border border-slate-200/60 dark:border-slate-700/60'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
             >
               {tab.label}
@@ -66,11 +66,11 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         </div>
       </div>
 
-      {/* Secondary Dropdown Filter Row */}
-      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300">
-        <div className="flex items-center gap-1.5 mr-1 text-slate-400">
+      {/* Secondary Filter Dropdowns */}
+      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs text-slate-600 dark:text-slate-400">
+        <div className="flex items-center gap-1.5 mr-1 text-slate-500">
           <SlidersHorizontal className="w-3.5 h-3.5" />
-          <span className="text-[11px] font-medium">Refine:</span>
+          <span className="text-[11px] font-medium">Filter:</span>
         </div>
 
         {/* Source Dropdown */}
@@ -80,10 +80,10 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none"
         >
           <option value="ALL">All Sources</option>
-          <option value="WhatsApp">💬 WhatsApp Group Finds</option>
-          <option value="Flyer">🖼️ Flyers & Posters</option>
-          <option value="Campus Drive">🎓 Campus Drives</option>
-          <option value="LinkedIn">🌐 LinkedIn</option>
+          <option value="WhatsApp">WhatsApp</option>
+          <option value="Flyer">Flyers &amp; Screenshots</option>
+          <option value="Campus Drive">Campus Drives</option>
+          <option value="LinkedIn">LinkedIn</option>
         </select>
 
         {/* Job Type Dropdown */}
