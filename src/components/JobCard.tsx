@@ -12,6 +12,8 @@ import {
   Mail,
   Globe,
   RotateCcw,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { formatTimeAgo } from '@/lib/utils';
 import { ApplyActionModal } from './ApplyActionModal';
@@ -34,6 +36,7 @@ export const JobCard: React.FC<JobCardProps> = ({
   onSelectJob,
 }) => {
   const [isApplyPopupOpen, setIsApplyPopupOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const activeApp = activeStudent ? job.applications?.[activeStudent.id] : undefined;
   const isApplied = activeApp?.status === 'APPLIED';
@@ -87,17 +90,146 @@ export const JobCard: React.FC<JobCardProps> = ({
     .replace(/https?:\/\/[^\s]+/gi, '')
     .trim();
 
+  // If job is applied and not manually expanded: render collapsed compact row
+  if (isApplied && !isExpanded) {
+    return (
+      <div
+        onClick={() => setIsExpanded(true)}
+        className="group relative rounded-2xl border border-slate-200/70 dark:border-[#272727] bg-slate-50/70 dark:bg-[#181818]/60 hover:bg-slate-100 dark:hover:bg-[#1f1f1f] p-4 transition-all duration-200 cursor-pointer flex flex-col justify-between gap-3 shadow-xs hover:border-slate-300 dark:hover:border-[#383838] opacity-80 hover:opacity-100"
+      >
+        {/* Top Row: Meta badges and Time */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Applied Badge */}
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <Check className="w-3 h-3" />
+              <span>Applied</span>
+            </span>
+
+            {/* Company Name */}
+            <span className="font-bold text-xs tracking-wider uppercase text-slate-500 dark:text-slate-400">
+              {job.company}
+            </span>
+
+            {/* Application Mode Badge */}
+            {isEmailApply ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60">
+                <Mail className="w-2.5 h-2.5 text-indigo-400" />
+                <span>HR Email</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60">
+                <Globe className="w-2.5 h-2.5 text-blue-400" />
+                <span>Career Link</span>
+              </span>
+            )}
+
+            {/* Screenshots badge */}
+            {images.length > 0 && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60">
+                <ImageIcon className="w-2.5 h-2.5" />
+                <span>{images.length}</span>
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 text-[11px] text-slate-400 font-medium">
+            <Clock className="w-3 h-3" />
+            <span>{formatTimeAgo(job.createdAt)}</span>
+          </div>
+        </div>
+
+        {/* Middle Row: Title + Peer Status */}
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="font-semibold text-sm text-slate-700 dark:text-slate-300 truncate">
+            {job.title}
+          </h3>
+          {peerHasApplied ? (
+            <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium shrink-0 flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" />
+              <span>{peerName} applied</span>
+            </span>
+          ) : (
+            <span className="text-[11px] text-slate-400 shrink-0">
+              {peerName} pending
+            </span>
+          )}
+        </div>
+
+        {/* Bottom Row: Actions + Expand trigger */}
+        <div className="pt-2.5 border-t border-slate-200/50 dark:border-[#272727] flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleApplyClick}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-200/80 hover:bg-slate-300 dark:bg-[#272727] dark:hover:bg-[#313131] text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
+              title={isEmailApply ? 'View HR email popup' : 'Re-open link'}
+            >
+              {isEmailApply ? <Mail className="w-3 h-3 opacity-70" /> : <ExternalLink className="w-3 h-3 opacity-70" />}
+              <span>Open</span>
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onUpdateStatus(job.id, 'NOT_APPLIED');
+              }}
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-[#272727] transition-colors cursor-pointer"
+              title="Reset status"
+              aria-label="Reset status"
+            >
+              <RotateCcw className="w-3 h-3" />
+            </button>
+
+            {onDeleteJob && (
+              <button
+                onClick={handleDelete}
+                className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                title="Delete job"
+                aria-label="Delete job"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded(true);
+            }}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/80 dark:hover:bg-[#272727] transition-colors cursor-pointer"
+          >
+            <span>Expand</span>
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Apply Action Instructions Popup Modal */}
+        {isApplyPopupOpen && (
+          <ApplyActionModal
+            job={job}
+            student={activeStudent}
+            isOpen={isApplyPopupOpen}
+            onClose={() => setIsApplyPopupOpen(false)}
+            onApply={onApply}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Expanded or Unapplied: Full Card
   return (
     <div
       onClick={handleCardClick}
       className={`relative rounded-2xl border p-5 cursor-pointer group flex flex-col justify-between origin-center transition-[transform,opacity,background-color,border-color,box-shadow] duration-200 ${
         isApplied
-          ? 'bg-slate-100/70 dark:bg-[#181818]/70 border-slate-200/60 dark:border-[#272727] opacity-70 scale-[0.96] hover:scale-[0.98] hover:opacity-95'
-          : 'bg-white dark:bg-[#181818] border-slate-200 dark:border-[#272727] hover:border-blue-500/50 scale-100 hover:-translate-y-0.5'
+          ? 'bg-slate-100/70 dark:bg-[#181818]/70 border-slate-200/60 dark:border-[#272727] opacity-85 hover:opacity-100'
+          : 'bg-white dark:bg-[#181818] border-slate-200 dark:border-[#272727] hover:border-blue-500/50 hover:-translate-y-0.5'
       }`}
     >
       <div>
-        {/* Top Meta Header: Company, Action Type, Time & Delete */}
+        {/* Top Meta Header: Company, Action Type, Time & Controls */}
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2 flex-wrap">
             {/* Company Name */}
@@ -113,20 +245,24 @@ export const JobCard: React.FC<JobCardProps> = ({
 
             {/* Application Mode Badge */}
             {isEmailApply ? (
-              <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-md border ${
-                isApplied
-                  ? 'bg-slate-100 dark:bg-slate-800/60 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800'
-                  : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900/60'
-              }`}>
+              <span
+                className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-md border ${
+                  isApplied
+                    ? 'bg-slate-100 dark:bg-slate-800/60 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800'
+                    : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900/60'
+                }`}
+              >
                 <Mail className="w-3 h-3 text-indigo-500" />
                 <span>HR Email</span>
               </span>
             ) : (
-              <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-md border ${
-                isApplied
-                  ? 'bg-slate-100 dark:bg-slate-800/60 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800'
-                  : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700/60'
-              }`}>
+              <span
+                className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-md border ${
+                  isApplied
+                    ? 'bg-slate-100 dark:bg-slate-800/60 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800'
+                    : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700/60'
+                }`}
+              >
                 <Globe className="w-3 h-3 text-blue-500" />
                 <span>Career Link</span>
               </span>
@@ -136,7 +272,9 @@ export const JobCard: React.FC<JobCardProps> = ({
             {images.length > 0 && (
               <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60">
                 <ImageIcon className="w-3 h-3 text-slate-500" />
-                <span>{images.length} {images.length === 1 ? 'Screenshot' : 'Screenshots'}</span>
+                <span>
+                  {images.length} {images.length === 1 ? 'Screenshot' : 'Screenshots'}
+                </span>
               </span>
             )}
 
@@ -154,19 +292,36 @@ export const JobCard: React.FC<JobCardProps> = ({
             </span>
           </div>
 
-          {onDeleteJob && (
-            <button
-              onClick={handleDelete}
-              className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
-              title="Delete job"
-              aria-label="Delete job"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <div className="flex items-center gap-1">
+            {/* Collapse button when expanded */}
+            {isApplied && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsExpanded(false);
+                }}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#272727] transition-colors cursor-pointer"
+                title="Collapse card"
+              >
+                <ChevronUp className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Collapse</span>
+              </button>
+            )}
+
+            {onDeleteJob && (
+              <button
+                onClick={handleDelete}
+                className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                title="Delete job"
+                aria-label="Delete job"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Job Title: Gray when applied, card is shrunk */}
+        {/* Job Title */}
         <h3
           className={`font-bold text-base sm:text-lg leading-snug mb-2.5 transition-colors ${
             isApplied
@@ -182,7 +337,7 @@ export const JobCard: React.FC<JobCardProps> = ({
           <p
             className={`text-xs line-clamp-2 leading-relaxed mb-4 ${
               isApplied
-                ? 'text-slate-400 dark:text-slate-600'
+                ? 'text-slate-400 dark:text-slate-500'
                 : 'text-slate-600 dark:text-slate-300'
             }`}
           >
@@ -192,7 +347,11 @@ export const JobCard: React.FC<JobCardProps> = ({
 
         {/* Screenshots Preview Strip */}
         {images.length > 0 && (
-          <div className={`mb-4 flex items-center gap-2 overflow-x-auto pb-1 ${isApplied ? 'opacity-50 group-hover:opacity-100' : ''}`}>
+          <div
+            className={`mb-4 flex items-center gap-2 overflow-x-auto pb-1 ${
+              isApplied ? 'opacity-60 group-hover:opacity-100' : ''
+            }`}
+          >
             {images.slice(0, 4).map((img, idx) => (
               <div
                 key={idx}
