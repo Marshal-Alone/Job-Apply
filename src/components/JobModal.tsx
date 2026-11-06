@@ -231,15 +231,15 @@ export const JobModal: React.FC<JobModalProps> = ({
       )}
 
       {/* Main Job Details Modal */}
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-2xl my-8 p-6 shadow-xl animate-in fade-in duration-150 flex flex-col max-h-[90vh]">
+      <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="bg-white dark:bg-[#0e1322] border border-slate-200/90 dark:border-slate-800 rounded-2xl w-full max-w-2xl my-8 p-6 shadow-2xl animate-in fade-in duration-150 flex flex-col max-h-[90vh]">
           {/* Header */}
           <div className="flex items-start justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800 shrink-0">
             <div>
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <span className={`text-xs font-semibold uppercase tracking-wider ${
                   isApplied
-                    ? 'text-slate-400 dark:text-slate-500 line-through'
+                    ? 'text-slate-400 dark:text-slate-500'
                     : 'text-blue-600 dark:text-blue-400'
                 }`}>
                   {currentJob.company}
@@ -256,7 +256,7 @@ export const JobModal: React.FC<JobModalProps> = ({
               </div>
               <h2 className={`text-lg font-bold leading-snug ${
                 isApplied
-                  ? 'line-through text-slate-400 dark:text-slate-500'
+                  ? 'text-slate-500 dark:text-slate-400'
                   : 'text-slate-900 dark:text-slate-100'
               }`}>
                 {currentJob.title}
@@ -274,11 +274,12 @@ export const JobModal: React.FC<JobModalProps> = ({
           <div className="overflow-y-auto py-4 space-y-4 flex-1 pr-1">
             {/* Description / Instructions */}
             {currentJob.description && (
-              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40">
-                <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Job Details &amp; Notes
+              <div className="p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/80 dark:bg-[#141b2e]">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 shadow-xs" />
+                  <span>Job Details &amp; Friend Notes</span>
                 </h4>
-                <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-line">
+                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line font-normal">
                   {currentJob.description}
                 </p>
               </div>
@@ -286,7 +287,7 @@ export const JobModal: React.FC<JobModalProps> = ({
 
             {/* Screenshots & Flyers Gallery */}
             {images.length > 0 && (
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3.5 bg-slate-50/60 dark:bg-slate-950/40">
+              <div className="rounded-xl border border-slate-200/90 dark:border-slate-800 p-4 bg-slate-50/80 dark:bg-[#141b2e]">
                 <div className="flex items-center justify-between mb-2.5">
                   <div className="flex items-center gap-2">
                     <ImageIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />

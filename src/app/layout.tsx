@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'PeerApply Nexus — Collaborative Student Job Tracker & Hub',
+  title: 'StudyBuddy — Collaborative Student Job Tracker & Hub',
   description:
     'A high-tempo collaborative job hunting and tracking platform for student groups. Share WhatsApp forwards, hiring posters, and track who applied with live peer sync.',
 };

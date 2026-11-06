@@ -327,13 +327,19 @@ export default function Home() {
       {/* Main Container - Focused Directly on Job List */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5">
         {/* Section Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">
-              Shared Job Board
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Active applicant: <span className="font-semibold text-slate-700 dark:text-slate-300">{activeStudent?.name}</span>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                Shared Board
+              </h1>
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Active applicant: <span className="font-bold text-slate-700 dark:text-slate-200">{activeStudent?.name}</span> • Peer synchronized
             </p>
           </div>
 
