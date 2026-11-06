@@ -95,7 +95,7 @@ export const JobCard: React.FC<JobCardProps> = ({
     return (
       <div
         onClick={() => setIsExpanded(true)}
-        className="group relative rounded-2xl border border-slate-200/70 dark:border-[#272727] bg-slate-50/70 dark:bg-[#181818]/60 hover:bg-slate-100 dark:hover:bg-[#1f1f1f] p-4 transition-all duration-200 cursor-pointer flex flex-col justify-between gap-3 shadow-xs hover:border-slate-300 dark:hover:border-[#383838] opacity-80 hover:opacity-100"
+        className="group relative rounded-2xl border border-slate-200/70 dark:border-[#272727] bg-slate-50/70 dark:bg-[#181818]/60 hover:bg-slate-100 dark:hover:bg-[#1f1f1f] p-3.5 transition-all duration-200 cursor-pointer flex flex-col justify-start gap-2.5 shadow-xs hover:border-slate-300 dark:hover:border-[#383838] opacity-80 hover:opacity-100 self-start w-full h-auto"
       >
         {/* Top Row: Meta badges and Time */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -222,7 +222,7 @@ export const JobCard: React.FC<JobCardProps> = ({
   return (
     <div
       onClick={handleCardClick}
-      className={`relative rounded-2xl border p-5 cursor-pointer group flex flex-col justify-between origin-center transition-[transform,opacity,background-color,border-color,box-shadow] duration-200 ${
+      className={`relative rounded-2xl border p-5 cursor-pointer group flex flex-col justify-between origin-center transition-[transform,opacity,background-color,border-color,box-shadow] duration-200 self-start w-full ${
         isApplied
           ? 'bg-slate-100/70 dark:bg-[#181818]/70 border-slate-200/60 dark:border-[#272727] opacity-85 hover:opacity-100'
           : 'bg-white dark:bg-[#181818] border-slate-200 dark:border-[#272727] hover:border-blue-500/50 hover:-translate-y-0.5'

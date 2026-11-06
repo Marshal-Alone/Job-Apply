@@ -413,7 +413,7 @@ export default function Home() {
             </button>
           </div>
         ) : filteredJobs.length > 0 ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
             {filteredJobs.map((job) => (
               <JobCard
                 key={job.id}
