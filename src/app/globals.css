@@ -9,32 +9,30 @@
     --surface-subtle: #f1f5f9;
     --surface-hover: #e2e8f0;
     --border-subtle: #e2e8f0;
-    --border-focus: #3b82f6;
+    --border-strong: #cbd5e1;
+    --border-focus: #2563eb;
     --text-primary: #0f172a;
     --text-secondary: #475569;
     --text-muted: #64748b;
     --accent: #2563eb;
     --accent-hover: #1d4ed8;
     --applied: #10b981;
-    --applied-subtle: #ecfdf5;
-    --applied-border: #a7f3d0;
   }
 
   .dark {
-    --bg-app: #0b0f17;
-    --surface-card: #131b2e;
-    --surface-subtle: #1e293b;
-    --surface-hover: #27354f;
+    --bg-app: #090d16;
+    --surface-card: #111726;
+    --surface-subtle: #182238;
+    --surface-hover: #222f4c;
     --border-subtle: #1e293b;
-    --border-focus: #60a5fa;
+    --border-strong: #334155;
+    --border-focus: #3b82f6;
     --text-primary: #f8fafc;
     --text-secondary: #cbd5e1;
     --text-muted: #94a3b8;
     --accent: #3b82f6;
     --accent-hover: #2563eb;
     --applied: #10b981;
-    --applied-subtle: rgba(16, 185, 129, 0.12);
-    --applied-border: rgba(16, 185, 129, 0.3);
   }
 
   html,
@@ -45,16 +43,16 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.011em;
   }
 
-  /* Interactive Focus Standards */
   :focus-visible {
     outline: 2px solid var(--border-focus);
     outline-offset: 2px;
   }
 }
 
-/* Accessible Reduced Motion Fallback */
+/* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   *,
   ::before,
@@ -68,8 +66,8 @@
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -77,10 +75,10 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.3);
+  background: rgba(148, 163, 184, 0.25);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.5);
+  background: rgba(148, 163, 184, 0.45);
 }
