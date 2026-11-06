@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,39 +6,36 @@
 
 @layer base {
   :root {
-    --bg-app: #f8fafc;
+    --bg-app: #f9fafb;
     --surface-card: #ffffff;
-    --surface-subtle: #f1f5f9;
-    --surface-hover: #e2e8f0;
-    --border-subtle: #e2e8f0;
-    --border-strong: #cbd5e1;
+    --surface-subtle: #f3f4f6;
+    --surface-hover: #e5e7eb;
+    --border-subtle: #e5e7eb;
+    --border-strong: #d1d5db;
     --border-focus: #2563eb;
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-muted: #64748b;
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
+    --text-muted: #6b7280;
     --accent: #2563eb;
     --accent-hover: #1d4ed8;
-    --accent-subtle: rgba(37, 99, 235, 0.08);
     --applied: #10b981;
-    --applied-subtle: rgba(16, 185, 129, 0.1);
   }
 
   .dark {
-    --bg-app: #070a12;
-    --surface-card: #0e1322;
-    --surface-subtle: #141b2e;
-    --surface-hover: #1c253d;
-    --border-subtle: #1c2438;
-    --border-strong: #2c3752;
+    /* Flat dark mode surfaces per landing-page-design B4 */
+    --bg-app: #000000;
+    --surface-card: #181818;
+    --surface-subtle: #1f1f1f;
+    --surface-hover: #272727;
+    --border-subtle: #272727;
+    --border-strong: #313131;
     --border-focus: #3b82f6;
-    --text-primary: #f8fafc;
-    --text-secondary: #cbd5e1;
-    --text-muted: #8493a8;
+    --text-primary: #ffffff;
+    --text-secondary: #d1d5db;
+    --text-muted: #9b9b9b;
     --accent: #3b82f6;
     --accent-hover: #2563eb;
-    --accent-subtle: rgba(59, 130, 246, 0.14);
     --applied: #10b981;
-    --applied-subtle: rgba(16, 185, 129, 0.12);
   }
 
   html,
@@ -46,10 +43,18 @@
     overflow-x: clip;
     background-color: var(--bg-app);
     color: var(--text-primary);
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: 'Geist', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    letter-spacing: -0.014em;
+    letter-spacing: -0.015em;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    text-wrap: balance;
+  }
+
+  p, span, label {
+    text-wrap: pretty;
   }
 
   :focus-visible {
@@ -58,25 +63,22 @@
   }
 }
 
-/* Tasteful subtle micro-interaction utilities */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+/* Landing Page Design B5: Signature Left-to-Right Heading Gradient */
+.hero-gradient-text {
+  background: linear-gradient(to right, #000000 0%, #666666 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.dark .glass-panel {
-  background: rgba(14, 19, 34, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+.dark .hero-gradient-text {
+  background: linear-gradient(to right, #ffffff 0%, #9b9b9b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.card-highlight {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04);
-}
-
-.dark .card-highlight {
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 4px 20px rgba(0, 0, 0, 0.35);
+/* Base motion curve per B7 */
+.motion-base {
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Reduced Motion */

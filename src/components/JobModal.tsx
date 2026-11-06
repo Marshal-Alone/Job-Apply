@@ -231,8 +231,8 @@ export const JobModal: React.FC<JobModalProps> = ({
       )}
 
       {/* Main Job Details Modal */}
-      <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
-        <div className="bg-white dark:bg-[#0e1322] border border-slate-200/90 dark:border-slate-800 rounded-2xl w-full max-w-2xl my-8 p-6 shadow-2xl animate-in fade-in duration-150 flex flex-col max-h-[90vh]">
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="bg-white dark:bg-[#181818] border border-slate-200 dark:border-[#272727] rounded-2xl w-full max-w-2xl my-8 p-6 shadow-2xl animate-in fade-in duration-150 flex flex-col max-h-[90vh]">
           {/* Header */}
           <div className="flex items-start justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800 shrink-0">
             <div>

@@ -8,6 +8,12 @@ import { FilterBar } from '@/components/FilterBar';
 import { JobCard } from '@/components/JobCard';
 import { JobModal } from '@/components/JobModal';
 import { AddJobModal } from '@/components/AddJobModal';
+import { LandingHero } from '@/components/LandingHero';
+import { TaglineReveal } from '@/components/TaglineReveal';
+import { BenefitsSection } from '@/components/BenefitsSection';
+import { HowItWorksSection } from '@/components/HowItWorksSection';
+import { FaqSection } from '@/components/FaqSection';
+import { FooterSection } from '@/components/FooterSection';
 import {
   Sparkles,
   RefreshCw,
@@ -324,149 +330,177 @@ export default function Home() {
         onToggleDarkMode={toggleDarkMode}
       />
 
-      {/* Main Container - Focused Directly on Job List */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5">
-        {/* Section Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-                Shared Board
-              </h1>
-              <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Active applicant: <span className="font-bold text-slate-700 dark:text-slate-200">{activeStudent?.name}</span> • Peer synchronized
-            </p>
-          </div>
-
-          <StatsBanner jobs={jobs} activeStudent={activeStudent} />
-        </div>
-
-        {/* Filter & Search Bar */}
-        <FilterBar
-          search={search}
-          onSearchChange={setSearch}
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
-          sourceFilter={sourceFilter}
-          onSourceFilterChange={setSourceFilter}
-          typeFilter={typeFilter}
-          onTypeFilterChange={setTypeFilter}
-          sortBy={sortBy}
-          onSortByChange={setSortBy}
+      {/* Main Container */}
+      <main className="flex-1 w-full mx-auto">
+        {/* Section 1: Landing Hero (Part A / B5) */}
+        <LandingHero
+          onOpenAddJob={() => setIsAddJobOpen(true)}
+          onScrollToBoard={() => {
+            const el = document.getElementById('board');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }}
+          totalJobs={jobs.length}
         />
 
-        {/* Job Listings Grid */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#111726] p-5 shadow-xs flex flex-col justify-between animate-pulse"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-20 bg-slate-200 dark:bg-slate-800 rounded-md" />
-                      <div className="h-4 w-16 bg-slate-200 dark:bg-slate-800 rounded-md" />
-                    </div>
-                    <div className="h-3 w-12 bg-slate-200 dark:bg-slate-800 rounded-md" />
-                  </div>
-                  <div className="h-5 w-3/4 bg-slate-200 dark:bg-slate-800 rounded-lg mb-2.5" />
-                  <div className="space-y-1.5 mb-4">
-                    <div className="h-3.5 w-full bg-slate-200/70 dark:bg-slate-800/60 rounded" />
-                    <div className="h-3.5 w-4/5 bg-slate-200/70 dark:bg-slate-800/60 rounded" />
-                  </div>
-                </div>
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-3">
-                  <div className="h-3.5 w-24 bg-slate-200 dark:bg-slate-800 rounded" />
-                  <div className="flex items-center gap-2">
-                    <div className="h-7 w-16 bg-slate-200 dark:bg-slate-800 rounded-lg" />
-                    <div className="h-7 w-20 bg-slate-200 dark:bg-slate-800 rounded-lg" />
-                  </div>
-                </div>
+        {/* Live Interactive Board Section */}
+        <section id="board" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 scroll-mt-16 border-b border-slate-200 dark:border-[#272727]">
+          {/* Section Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+            <div className="max-w-[680px]">
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                  Active job board
+                </h2>
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
               </div>
-            ))}
-          </div>
-        ) : fetchError && jobs.length === 0 ? (
-          <div className="text-center py-12 px-4 rounded-2xl border border-red-200 dark:border-red-900/40 bg-red-50/40 dark:bg-red-950/20">
-            <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-950/80 text-red-600 dark:text-red-400 mx-auto flex items-center justify-center mb-2.5 border border-red-200 dark:border-red-800">
-              <AlertTriangle className="w-5 h-5" />
+              <p className="text-xs text-slate-500 dark:text-[#9b9b9b] mt-1 font-normal">
+                Active applicant: <span className="font-semibold text-slate-800 dark:text-white">{activeStudent?.name}</span> • Synchronized with your study buddy
+              </p>
             </div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-              Unable to load job board
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-1 mb-4">
-              {fetchError}
-            </p>
-            <button
-              onClick={() => {
-                setIsLoading(true);
-                fetchJobs();
-              }}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Retry Connection</span>
-            </button>
+
+            <StatsBanner jobs={jobs} activeStudent={activeStudent} />
           </div>
-        ) : filteredJobs.length > 0 ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {filteredJobs.map((job) => (
-              <JobCard
-                key={job.id}
-                job={job}
-                activeStudent={activeStudent}
-                onApply={handleApply}
-                onUpdateStatus={handleUpdateStatus}
-                onDeleteJob={handleDeleteJob}
-                onSelectJob={(job) => setSelectedJob(job)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 px-4 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/40">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 mx-auto flex items-center justify-center mb-2.5">
-              <Briefcase className="w-5 h-5" />
+
+          {/* Filter & Search Bar */}
+          <FilterBar
+            search={search}
+            onSearchChange={setSearch}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            sourceFilter={sourceFilter}
+            onSourceFilterChange={setSourceFilter}
+            typeFilter={typeFilter}
+            onTypeFilterChange={setTypeFilter}
+            sortBy={sortBy}
+            onSortByChange={setSortBy}
+          />
+
+          {/* Job Listings Grid */}
+          {isLoading ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="rounded-2xl border border-slate-200 dark:border-[#272727] bg-white dark:bg-[#181818] p-5 animate-pulse flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-4 w-20 bg-slate-200 dark:bg-[#272727] rounded-md" />
+                        <div className="h-4 w-16 bg-slate-200 dark:bg-[#272727] rounded-md" />
+                      </div>
+                      <div className="h-3 w-12 bg-slate-200 dark:bg-[#272727] rounded-md" />
+                    </div>
+                    <div className="h-5 w-3/4 bg-slate-200 dark:bg-[#272727] rounded-lg mb-2.5" />
+                    <div className="space-y-1.5 mb-4">
+                      <div className="h-3.5 w-full bg-slate-200/70 dark:bg-[#272727]/60 rounded" />
+                      <div className="h-3.5 w-4/5 bg-slate-200/70 dark:bg-[#272727]/60 rounded" />
+                    </div>
+                  </div>
+                  <div className="pt-3 border-t border-slate-100 dark:border-[#272727] flex items-center justify-between gap-3">
+                    <div className="h-3.5 w-24 bg-slate-200 dark:bg-[#272727] rounded" />
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-16 bg-slate-200 dark:bg-[#272727] rounded-lg" />
+                      <div className="h-7 w-20 bg-slate-200 dark:bg-[#272727] rounded-lg" />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-              {search.trim() || statusFilter !== 'ALL' || sourceFilter !== 'ALL' || typeFilter !== 'ALL'
-                ? 'No matching jobs found'
-                : 'No jobs posted yet'}
-            </h3>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-3.5">
-              {search.trim() || statusFilter !== 'ALL' || sourceFilter !== 'ALL' || typeFilter !== 'ALL'
-                ? 'Try adjusting your search query or filters to find what you are looking for.'
-                : 'Found an opening on WhatsApp or LinkedIn? Share the link or flyer below so both of you can apply and track!'}
-            </p>
-            {search.trim() || statusFilter !== 'ALL' || sourceFilter !== 'ALL' || typeFilter !== 'ALL' ? (
+          ) : fetchError && jobs.length === 0 ? (
+            <div className="text-center py-12 px-4 rounded-2xl border border-red-200 dark:border-red-900/40 bg-red-50/40 dark:bg-red-950/20">
+              <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-950/80 text-red-600 dark:text-red-400 mx-auto flex items-center justify-center mb-2.5 border border-red-200 dark:border-red-800">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                Unable to load job board
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-1 mb-4 font-normal">
+                {fetchError}
+              </p>
               <button
                 onClick={() => {
-                  setSearch('');
-                  setStatusFilter('ALL');
-                  setSourceFilter('ALL');
-                  setTypeFilter('ALL');
+                  setIsLoading(true);
+                  fetchJobs();
                 }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs cursor-pointer active:scale-[0.98]"
               >
-                <span>Reset All Filters</span>
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Retry connection</span>
               </button>
-            ) : (
-              <button
-                onClick={() => setIsAddJobOpen(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                <span>Share First Job or Flyer</span>
-              </button>
-            )}
-          </div>
-        )}
+            </div>
+          ) : filteredJobs.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {filteredJobs.map((job) => (
+                <JobCard
+                  key={job.id}
+                  job={job}
+                  activeStudent={activeStudent}
+                  onApply={handleApply}
+                  onUpdateStatus={handleUpdateStatus}
+                  onDeleteJob={handleDeleteJob}
+                  onSelectJob={(job) => setSelectedJob(job)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 px-4 rounded-2xl border border-dashed border-slate-200 dark:border-[#272727] bg-white dark:bg-[#181818]">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-[#1f1f1f] text-blue-600 dark:text-blue-400 mx-auto flex items-center justify-center mb-2.5">
+                <Briefcase className="w-5 h-5" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white">
+                {search.trim() || statusFilter !== 'ALL' || sourceFilter !== 'ALL' || typeFilter !== 'ALL'
+                  ? 'No matching jobs found'
+                  : 'No jobs posted yet'}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-[#9b9b9b] max-w-sm mx-auto mt-1 mb-3.5 font-normal">
+                {search.trim() || statusFilter !== 'ALL' || sourceFilter !== 'ALL' || typeFilter !== 'ALL'
+                  ? 'Try adjusting your search query or filters to find what you are looking for.'
+                  : 'Found an opening on WhatsApp or LinkedIn? Share the link or flyer below so both of you can apply and track!'}
+              </p>
+              {search.trim() || statusFilter !== 'ALL' || sourceFilter !== 'ALL' || typeFilter !== 'ALL' ? (
+                <button
+                  onClick={() => {
+                    setSearch('');
+                    setStatusFilter('ALL');
+                    setSourceFilter('ALL');
+                    setTypeFilter('ALL');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-[#d1d5db] bg-slate-100 hover:bg-slate-200 dark:bg-[#272727] dark:hover:bg-[#313131] transition-colors cursor-pointer active:scale-[0.98]"
+                >
+                  <span>Reset all filters</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => setIsAddJobOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs cursor-pointer active:scale-[0.98]"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Share first job or flyer</span>
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Section 2: Mandatory Tagline Reveal (B11) */}
+        <TaglineReveal />
+
+        {/* Section 3: Outcome-Focused Benefits (Part A / B1) */}
+        <BenefitsSection />
+
+        {/* Section 4: Three-Step How It Works (Part A) */}
+        <HowItWorksSection />
+
+        {/* Section 5: Frequently Asked Questions (Part A) */}
+        <FaqSection />
       </main>
+
+      {/* Footer Section & Closing CTA */}
+      <FooterSection onOpenAddJob={() => setIsAddJobOpen(true)} />
 
 
 
