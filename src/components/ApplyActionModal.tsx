@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Job, Student } from '@/lib/types';
 import { X, Mail, Copy, Check, Send } from 'lucide-react';
 
@@ -20,8 +21,14 @@ export const ApplyActionModal: React.FC<ApplyActionModalProps> = ({
   onApply,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  if (!isOpen || !mounted) return null;
 
   const hrEmail =
     job.applyEmail ||
@@ -34,9 +41,10 @@ export const ApplyActionModal: React.FC<ApplyActionModalProps> = ({
   const instructions =
     job.applyInstructions || `Send resume on HR email: ${hrEmail}`;
 
-  const isApplied = student && job.applications?.[student.id]?.status === 'APPLIED';
+  const isApplied = Boolean(student && job.applications?.[student.id]?.status === 'APPLIED');
 
-  const handleCopyEmail = async () => {
+  const handleCopyEmail = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     try {
       await navigator.clipboard.writeText(hrEmail);
       setCopied(true);
@@ -46,7 +54,8 @@ export const ApplyActionModal: React.FC<ApplyActionModalProps> = ({
     }
   };
 
-  const handleOpenMailClient = () => {
+  const handleOpenMailClient = (e: React.MouseEvent) => {
+    e.stopPropagation();
     const subject = encodeURIComponent(`Application for ${job.title} - ${student?.name || 'Applicant'}`);
     const body = encodeURIComponent(
       `Hello Hiring Team at ${job.company},\n\nI am writing to express my interest in the ${job.title} position.\n\nPlease find my resume attached.\n\nBest regards,\n${student?.name || ''}`
@@ -55,20 +64,38 @@ export const ApplyActionModal: React.FC<ApplyActionModalProps> = ({
     if (!isApplied) {
       onApply(job.id);
     }
+    onClose();
   };
 
-  const handleMarkApplied = () => {
+  const handleMarkApplied = (e: React.MouseEvent) => {
+    e.stopPropagation();
     onApply(job.id);
+    onClose();
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-xs z-[70] flex items-center justify-center p-4 animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-[#181818] border border-slate-200 dark:border-[#272727] rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in duration-150 flex flex-col relative">
+  const modalContent = (
+    <div
+      className="fixed inset-0 bg-black/80 backdrop-blur-xs z-[80] flex items-center justify-center p-4 animate-in fade-in duration-150"
+      onClick={(e) => {
+        e.stopPropagation();
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        className="bg-white dark:bg-[#181818] border border-slate-200 dark:border-[#272727] rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 flex flex-col relative"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Close Button */}
         <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           title="Close dialog"
+          aria-label="Close dialog"
         >
           <X className="w-4 h-4" />
         </button>
@@ -82,7 +109,7 @@ export const ApplyActionModal: React.FC<ApplyActionModalProps> = ({
             <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
               How to Apply
             </h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-[#9b9b9b]">
               {job.title} at {job.company}
             </p>
           </div>
@@ -109,7 +136,7 @@ export const ApplyActionModal: React.FC<ApplyActionModalProps> = ({
             </code>
             <button
               onClick={handleCopyEmail}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shrink-0 ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shrink-0 cursor-pointer ${
                 copied
                   ? 'bg-emerald-600 text-white'
                   : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
@@ -135,7 +162,7 @@ export const ApplyActionModal: React.FC<ApplyActionModalProps> = ({
           {/* Open Email Client CTA */}
           <button
             onClick={handleOpenMailClient}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs active:scale-[0.99]"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs active:scale-[0.99] cursor-pointer"
           >
             <Send className="w-3.5 h-3.5" />
             <span>Open Email App &amp; Send Resume</span>
@@ -144,7 +171,7 @@ export const ApplyActionModal: React.FC<ApplyActionModalProps> = ({
           {/* Mark as Applied Toggle */}
           <button
             onClick={handleMarkApplied}
-            className={`w-full flex items-center justify-center gap-1.5 py-2 px-4 rounded-xl text-xs font-semibold transition-colors border ${
+            className={`w-full flex items-center justify-center gap-1.5 py-2 px-4 rounded-xl text-xs font-semibold transition-colors border cursor-pointer ${
               isApplied
                 ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
                 : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-transparent'
@@ -157,4 +184,6 @@ export const ApplyActionModal: React.FC<ApplyActionModalProps> = ({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };

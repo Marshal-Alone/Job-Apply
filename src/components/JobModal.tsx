@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Job, Student } from '@/lib/types';
 import {
   X,
@@ -36,6 +37,12 @@ export const JobModal: React.FC<JobModalProps> = ({
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isApplyPopupOpen, setIsApplyPopupOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   // Apply action edit state
   const [isEditingAction, setIsEditingAction] = useState(false);
@@ -69,7 +76,7 @@ export const JobModal: React.FC<JobModalProps> = ({
     }
   }, [job]);
 
-  if (!currentJob) return null;
+  if (!currentJob || !mounted) return null;
 
   const activeApp = activeStudent ? currentJob.applications?.[activeStudent.id] : undefined;
   const isApplied = activeApp?.status === 'APPLIED';
@@ -156,7 +163,7 @@ export const JobModal: React.FC<JobModalProps> = ({
     setActiveImageIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
   };
 
-  return (
+  return createPortal(
     <>
       {/* Lightbox Overlay */}
       {isLightboxOpen && images.length > 0 && (
@@ -231,8 +238,19 @@ export const JobModal: React.FC<JobModalProps> = ({
       )}
 
       {/* Main Job Details Modal */}
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
-        <div className="bg-white dark:bg-[#181818] border border-slate-200 dark:border-[#272727] rounded-2xl w-full max-w-2xl my-8 p-6 shadow-2xl animate-in fade-in duration-150 flex flex-col max-h-[90vh]">
+      <div
+        className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (e.target === e.currentTarget) {
+            onClose();
+          }
+        }}
+      >
+        <div
+          className="bg-white dark:bg-[#181818] border border-slate-200 dark:border-[#272727] rounded-2xl w-full max-w-2xl my-8 p-6 shadow-2xl animate-in fade-in duration-150 flex flex-col max-h-[90vh]"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header */}
           <div className="flex items-start justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800 shrink-0">
             <div>
@@ -557,6 +575,7 @@ export const JobModal: React.FC<JobModalProps> = ({
           onApply={onApply}
         />
       )}
-    </>
+    </>,
+    document.body
   );
 };

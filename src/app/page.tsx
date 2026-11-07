@@ -8,6 +8,7 @@ import { FilterBar } from '@/components/FilterBar';
 import { JobCard } from '@/components/JobCard';
 import { JobModal } from '@/components/JobModal';
 import { AddJobModal } from '@/components/AddJobModal';
+import { ApplyActionModal } from '@/components/ApplyActionModal';
 import {
   RefreshCw,
   CheckCircle2,
@@ -27,6 +28,7 @@ export default function Home() {
 
   // Modals
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [applyModalJob, setApplyModalJob] = useState<Job | null>(null);
   const [isAddJobOpen, setIsAddJobOpen] = useState(false);
 
   // Toast
@@ -420,6 +422,7 @@ export default function Home() {
                 job={job}
                 activeStudent={activeStudent}
                 onApply={handleApply}
+                onOpenApplyModal={(targetJob) => setApplyModalJob(targetJob)}
                 onUpdateStatus={handleUpdateStatus}
                 onDeleteJob={handleDeleteJob}
                 onSelectJob={(job) => setSelectedJob(job)}
@@ -487,6 +490,16 @@ export default function Home() {
             setSelectedJob(updated);
             showToast('Apply action updated successfully!', 'info');
           }}
+        />
+      )}
+
+      {applyModalJob && (
+        <ApplyActionModal
+          job={applyModalJob}
+          student={activeStudent}
+          isOpen={Boolean(applyModalJob)}
+          onClose={() => setApplyModalJob(null)}
+          onApply={handleApply}
         />
       )}
     </div>

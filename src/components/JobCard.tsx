@@ -16,12 +16,12 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { formatTimeAgo } from '@/lib/utils';
-import { ApplyActionModal } from './ApplyActionModal';
 
 interface JobCardProps {
   job: Job;
   activeStudent: Student | null;
   onApply: (jobId: string) => void;
+  onOpenApplyModal?: (job: Job) => void;
   onUpdateStatus: (jobId: string, status: ApplicationStatus) => void;
   onDeleteJob?: (jobId: string) => void;
   onSelectJob?: (job: Job) => void;
@@ -31,11 +31,11 @@ export const JobCard: React.FC<JobCardProps> = ({
   job,
   activeStudent,
   onApply,
+  onOpenApplyModal,
   onUpdateStatus,
   onDeleteJob,
   onSelectJob,
 }) => {
-  const [isApplyPopupOpen, setIsApplyPopupOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
   const activeApp = activeStudent ? job.applications?.[activeStudent.id] : undefined;
@@ -64,7 +64,9 @@ export const JobCard: React.FC<JobCardProps> = ({
   const handleApplyClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isEmailApply) {
-      setIsApplyPopupOpen(true);
+      if (onOpenApplyModal) {
+        onOpenApplyModal(job);
+      }
     } else {
       if (job.applyUrl && job.applyUrl !== '#') {
         window.open(job.applyUrl, '_blank', 'noopener,noreferrer');
@@ -80,10 +82,24 @@ export const JobCard: React.FC<JobCardProps> = ({
     }
   };
 
-  const handleCardClick = () => {
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Root protection: Never open job modal if click came from any interactive control
+    const target = e.target as HTMLElement;
+    if (target.closest('button, a, input, select, textarea, [role="button"]')) {
+      return;
+    }
     if (onSelectJob) {
       onSelectJob(job);
     }
+  };
+
+  const handleCollapsedClick = (e: React.MouseEvent) => {
+    // Root protection: Never expand if click came from any interactive button
+    const target = e.target as HTMLElement;
+    if (target.closest('button, a, input, select, textarea, [role="button"]')) {
+      return;
+    }
+    setIsExpanded(true);
   };
 
   const cleanDescription = (job.description || '')
@@ -94,7 +110,7 @@ export const JobCard: React.FC<JobCardProps> = ({
   if (isApplied && !isExpanded) {
     return (
       <div
-        onClick={() => setIsExpanded(true)}
+        onClick={handleCollapsedClick}
         className="group relative rounded-2xl border border-slate-200/70 dark:border-[#272727] bg-slate-50/70 dark:bg-[#181818]/60 hover:bg-slate-100 dark:hover:bg-[#1f1f1f] p-3.5 transition-all duration-200 cursor-pointer flex flex-col justify-start gap-2.5 shadow-xs hover:border-slate-300 dark:hover:border-[#383838] opacity-80 hover:opacity-100 self-start w-full h-auto"
       >
         {/* Top Row: Meta badges and Time */}
@@ -203,17 +219,6 @@ export const JobCard: React.FC<JobCardProps> = ({
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
         </div>
-
-        {/* Apply Action Instructions Popup Modal */}
-        {isApplyPopupOpen && (
-          <ApplyActionModal
-            job={job}
-            student={activeStudent}
-            isOpen={isApplyPopupOpen}
-            onClose={() => setIsApplyPopupOpen(false)}
-            onApply={onApply}
-          />
-        )}
       </div>
     );
   }
@@ -446,17 +451,6 @@ export const JobCard: React.FC<JobCardProps> = ({
           )}
         </div>
       </div>
-
-      {/* Apply Action Instructions Popup Modal */}
-      {isApplyPopupOpen && (
-        <ApplyActionModal
-          job={job}
-          student={activeStudent}
-          isOpen={isApplyPopupOpen}
-          onClose={() => setIsApplyPopupOpen(false)}
-          onApply={onApply}
-        />
-      )}
     </div>
   );
 };
