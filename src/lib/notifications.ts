@@ -1,5 +1,5 @@
 /**
- * PeerApply Nexus - In-House Web Notification & Audio System
+ * StudyBuddy (PeerApply Nexus) - In-House Web Notification & Audio System
  *
  * Provides native desktop notifications via ServiceWorkerRegistration.showNotification()
  * with fallback to Window.Notification constructor, plus a zero-asset Web Audio chime synthesizer.
@@ -12,7 +12,11 @@ export interface DesktopNotificationOptions {
   badge?: string;
   data?: Record<string, unknown>;
   silent?: boolean;
+  requireInteraction?: boolean;
 }
+
+// Built-in inline SVG data URI icon so notifications never fail on missing files
+const DEFAULT_NOTIFICATION_ICON = '/icon.svg';
 
 /**
  * Synthesizes a pleasant two-tone chime (C5 523.25Hz -> E5 659.25Hz) using the Web Audio API.
@@ -103,55 +107,72 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 /**
  * Hybrid desktop notification dispatcher:
  * 1. Checks if permission is 'granted'.
- * 2. If 'serviceWorker' is in navigator, waits for navigator.serviceWorker.ready and calls reg.showNotification().
- * 3. Falls back to window Notification constructor if Service Worker is unavailable.
+ * 2. Attempts Service Worker showNotification() with requireInteraction=true so it stays in the notification bar / Action Center.
+ * 3. Falls back immediately to window Notification constructor if Service Worker is unavailable or slow.
  */
 export async function sendDesktopNotification(
   title: string,
   options: DesktopNotificationOptions
-): Promise<void> {
+): Promise<boolean> {
   if (typeof window === 'undefined' || !('Notification' in window)) {
-    return;
+    return false;
   }
 
   if (Notification.permission !== 'granted') {
-    return;
+    return false;
   }
 
-  // 1. Service Worker hybrid dispatch (preferred for background and focus handling)
+  const notificationPayload: NotificationOptions = {
+    body: options.body,
+    tag: options.tag || `studybuddy-alert-${Date.now()}`,
+    icon: options.icon || DEFAULT_NOTIFICATION_ICON,
+    badge: options.badge || DEFAULT_NOTIFICATION_ICON,
+    requireInteraction: options.requireInteraction !== false, // Default true: stays in Windows Notification Center / Action Bar!
+    silent: options.silent || false,
+    data: options.data || { url: '/' },
+  };
+
+  // 1. Service Worker hybrid dispatch (preferred for background & OS notification bar handling)
   if ('serviceWorker' in navigator) {
     try {
-      const registration = await navigator.serviceWorker.ready;
+      // Race against 1000ms timeout so we never hang if sw is not activated yet
+      const registration = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 1000)),
+      ]);
+
       if (registration && typeof registration.showNotification === 'function') {
-        await registration.showNotification(title, {
-          body: options.body,
-          tag: options.tag || 'job-alert',
-          icon: options.icon || '/favicon.ico',
-          badge: options.badge,
-          data: options.data || { url: '/' },
+        await registration.showNotification(title, notificationPayload);
+        return true;
+      }
+
+      // If controller is active, postMessage fallback
+      if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'SHOW_NOTIFICATION',
+          title,
+          options: notificationPayload,
         });
-        return;
+        return true;
       }
     } catch (swErr) {
-      console.warn('Service Worker showNotification failed, falling back to Notification constructor:', swErr);
+      console.warn('Service Worker notification failed, trying fallback constructor:', swErr);
     }
   }
 
-  // 2. Fallback to Window Notification constructor
+  // 2. Direct Window Notification constructor fallback
   try {
-    const notif = new Notification(title, {
-      body: options.body,
-      tag: options.tag || 'job-alert',
-      icon: options.icon || '/favicon.ico',
-      data: options.data || { url: '/' },
-    });
+    const notif = new Notification(title, notificationPayload);
 
     notif.onclick = () => {
       window.focus();
       notif.close();
     };
+
+    return true;
   } catch (notifErr) {
     console.warn('Window Notification constructor failed:', notifErr);
+    return false;
   }
 }
 

@@ -1,5 +1,5 @@
-// Service Worker for PeerApply Nexus
-// Handles background notification click events, client tab focusing, and lifecycle
+// Service Worker for StudyBuddy (PeerApply Nexus)
+// Handles background notification click events, client tab focusing, and background messaging
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -7,6 +7,17 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
+});
+
+// Allow clients to trigger background notifications directly through the service worker
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const { title, options } = event.data;
+    self.registration.showNotification(title, {
+      ...options,
+      requireInteraction: true,
+    });
+  }
 });
 
 self.addEventListener('notificationclick', (event) => {

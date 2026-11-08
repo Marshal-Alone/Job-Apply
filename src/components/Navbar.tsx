@@ -1,9 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Student } from '@/lib/types';
 import { StudentSwitcher } from './StudentSwitcher';
-import { Briefcase, RefreshCw, Sun, Moon, Plus, Bell, BellOff } from 'lucide-react';
+import { Briefcase, RefreshCw, Sun, Moon, Plus, Bell, BellOff, CheckCircle2, AlertCircle, Clock, Send } from 'lucide-react';
 
 interface NavbarProps {
   students: Student[];
@@ -16,6 +16,7 @@ interface NavbarProps {
   onToggleDarkMode: () => void;
   notificationPermission?: NotificationPermission;
   onRequestNotificationPermission?: () => void;
+  onTestNotification?: (delaySeconds?: number) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -29,7 +30,26 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleDarkMode,
   notificationPermission = 'default',
   onRequestNotificationPermission,
+  onTestNotification,
 }) => {
+  const [isNotifMenuOpen, setIsNotifMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsNotifMenuOpen(false);
+      }
+    };
+    if (isNotifMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isNotifMenuOpen]);
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-[var(--border-subtle)] bg-white/80 dark:bg-black/85 backdrop-blur-md transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-15 flex items-center justify-between gap-4">
@@ -75,51 +95,120 @@ export const Navbar: React.FC<NavbarProps> = ({
             {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
           </button>
 
-          {/* Notification Bell */}
-          <button
-            onClick={onRequestNotificationPermission}
-            className="relative p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#181818] transition-colors border border-slate-200 dark:border-[#272727] cursor-pointer active:scale-[0.98]"
-            title={
-              notificationPermission === 'granted'
-                ? 'Desktop notifications active'
-                : notificationPermission === 'denied'
-                ? 'Notifications blocked in browser settings'
-                : 'Enable desktop notifications'
-            }
-            aria-label={
-              notificationPermission === 'granted'
-                ? 'Desktop notifications active'
-                : notificationPermission === 'denied'
-                ? 'Desktop notifications blocked'
-                : 'Enable desktop notifications'
-            }
-          >
-            {notificationPermission === 'denied' ? (
-              <BellOff className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-            ) : (
-              <Bell
-                className={`w-3.5 h-3.5 ${
-                  notificationPermission === 'granted'
-                    ? 'text-blue-600 dark:text-blue-400'
-                    : 'text-slate-600 dark:text-slate-300'
-                }`}
-              />
-            )}
+          {/* Notification Bell & Dropdown */}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setIsNotifMenuOpen(!isNotifMenuOpen)}
+              className="relative p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#181818] transition-colors border border-slate-200 dark:border-[#272727] cursor-pointer active:scale-[0.98]"
+              title={
+                notificationPermission === 'granted'
+                  ? 'Desktop notifications active (Click to manage)'
+                  : notificationPermission === 'denied'
+                  ? 'Notifications blocked in browser settings'
+                  : 'Enable desktop notifications'
+              }
+              aria-label="Notifications settings"
+            >
+              {notificationPermission === 'denied' ? (
+                <BellOff className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+              ) : (
+                <Bell
+                  className={`w-3.5 h-3.5 ${
+                    notificationPermission === 'granted'
+                      ? 'text-blue-600 dark:text-blue-400'
+                      : 'text-slate-600 dark:text-slate-300'
+                  }`}
+                />
+              )}
 
-            {notificationPermission === 'granted' && (
-              <span
-                className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#181818]"
-                aria-hidden="true"
-              />
-            )}
+              {notificationPermission === 'granted' && (
+                <span
+                  className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#181818]"
+                  aria-hidden="true"
+                />
+              )}
 
-            {notificationPermission === 'default' && (
-              <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2" aria-hidden="true">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
-              </span>
+              {notificationPermission === 'default' && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2" aria-hidden="true">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+                </span>
+              )}
+            </button>
+
+            {/* Notification Management Popover */}
+            {isNotifMenuOpen && (
+              <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-white dark:bg-[#181818] border border-slate-200 dark:border-[#272727] shadow-2xl p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-slate-100 dark:border-[#272727]">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">
+                      Notification Bar Alerts
+                    </span>
+                  </div>
+                  {notificationPermission === 'granted' ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Active
+                    </span>
+                  ) : notificationPermission === 'denied' ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-red-600 dark:text-red-400 bg-red-500/10 px-2 py-0.5 rounded-md border border-red-500/20">
+                      <AlertCircle className="w-3 h-3" />
+                      Blocked
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                      Setup Needed
+                    </span>
+                  )}
+                </div>
+
+                <p className="text-xs text-slate-600 dark:text-slate-300 mb-3.5 leading-relaxed">
+                  Sends native desktop alerts to your Windows notification bar when your peer shares a new job, even if you are in another app.
+                </p>
+
+                {notificationPermission !== 'granted' ? (
+                  <button
+                    onClick={() => {
+                      onRequestNotificationPermission?.();
+                      setIsNotifMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs cursor-pointer active:scale-[0.98]"
+                  >
+                    <Bell className="w-3.5 h-3.5" />
+                    <span>Enable Notification Bar Alerts</span>
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => {
+                        onTestNotification?.(0);
+                        setIsNotifMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-semibold text-slate-700 dark:text-white bg-slate-100 hover:bg-slate-200 dark:bg-[#272727] dark:hover:bg-[#313131] transition-colors cursor-pointer active:scale-[0.98]"
+                    >
+                      <Send className="w-3.5 h-3.5 text-blue-500" />
+                      <span>Send Instant Test Notification</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        onTestNotification?.(5);
+                        setIsNotifMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs cursor-pointer active:scale-[0.98]"
+                    >
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Test in 5s (Switch to another app)</span>
+                    </button>
+                    <p className="text-[10px] text-slate-400 text-center mt-1">
+                      Click the 5s button, then switch to any other app or desktop to watch it pop up!
+                    </p>
+                  </div>
+                )}
+              </div>
             )}
-          </button>
+          </div>
 
           {/* Student Switcher */}
           <StudentSwitcher
@@ -140,12 +229,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* Share Job CTA Button (B2 main button padding: py-2 px-3) */}
+          {/* Share Job CTA Button */}
           <button
             onClick={onOpenAddJob}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition-colors duration-200 shadow-xs cursor-pointer"
+            className="flex items-center gap-1.5 py-2 px-3 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs cursor-pointer active:scale-[0.98]"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             <span>Share job</span>
           </button>
         </div>

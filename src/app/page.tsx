@@ -22,6 +22,7 @@ import {
   Briefcase,
   Upload,
   AlertTriangle,
+  Bell,
 } from 'lucide-react';
 
 function getOrCreateDeviceId(): string {
@@ -338,9 +339,46 @@ export default function Home() {
     setNotificationPermission(perm);
     if (perm === 'granted') {
       playNotificationSound();
-      showToast('Desktop notifications enabled! You will be alerted when new jobs are shared.', 'success');
+      await sendDesktopNotification('StudyBuddy Notifications Active', {
+        body: 'Alerts are enabled! New jobs will appear in your notification bar even when another app is open.',
+        requireInteraction: false,
+      });
+      showToast('Notification Bar alerts active! New jobs will pop up when another app is open.', 'success');
     } else if (perm === 'denied') {
-      showToast('Notifications blocked in browser. Please allow them in your site settings.', 'info');
+      showToast('Notifications blocked in browser. Please allow them in your browser site settings.', 'info');
+    }
+  };
+
+  // Test Notification Handler (immediate or with countdown to switch apps)
+  const handleTestNotification = async (delaySeconds = 0) => {
+    let perm = notificationPermission;
+    if (perm !== 'granted') {
+      perm = await requestNotificationPermission();
+      setNotificationPermission(perm);
+      if (perm !== 'granted') {
+        showToast('Notifications blocked or dismissed. Please allow notifications in site settings.', 'info');
+        return;
+      }
+    }
+
+    if (delaySeconds > 0) {
+      showToast(`Test alert scheduled in ${delaySeconds}s! Switch to another app now to see it in your notification bar.`, 'info');
+      setTimeout(async () => {
+        playNotificationSound();
+        await sendDesktopNotification('StudyBuddy: New Job Alert!', {
+          body: 'Google • Software Engineer (Fresher) shared by your study buddy',
+          tag: 'test-job-alert',
+          requireInteraction: true,
+        });
+      }, delaySeconds * 1000);
+    } else {
+      playNotificationSound();
+      await sendDesktopNotification('StudyBuddy: New Job Alert!', {
+        body: 'Google • Software Engineer (Fresher) shared by your study buddy',
+        tag: 'test-job-alert',
+        requireInteraction: true,
+      });
+      showToast('Notification sent to your Windows notification bar!', 'success');
     }
   };
 
@@ -438,10 +476,38 @@ export default function Home() {
         onToggleDarkMode={toggleDarkMode}
         notificationPermission={notificationPermission}
         onRequestNotificationPermission={handleRequestNotificationPermission}
+        onTestNotification={handleTestNotification}
       />
 
       {/* Main Board Container */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+        {/* Permission Setup Banner (shown when notifications are not yet enabled) */}
+        {notificationPermission === 'default' && (
+          <div className="mb-6 p-4 rounded-2xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-600/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                <Bell className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-900 dark:text-white">
+                  Show notifications in your Windows notification bar when another app is open?
+                </p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 font-normal">
+                  You&apos;ll see a popup with the job title &amp; company name whenever your peer shares a new role.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleRequestNotificationPermission}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs cursor-pointer active:scale-[0.98]"
+              >
+                Enable Notification Bar Alerts
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="max-w-[680px]">
