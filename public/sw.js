@@ -15,6 +15,8 @@ self.addEventListener('message', (event) => {
     const { title, options } = event.data;
     self.registration.showNotification(title, {
       ...options,
+      icon: options?.icon || '/icon.png',
+      badge: options?.badge || '/icon.png',
       requireInteraction: true,
     });
   }

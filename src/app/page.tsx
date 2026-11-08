@@ -365,20 +365,25 @@ export default function Home() {
       showToast(`Test alert scheduled in ${delaySeconds}s! Switch to another app now to see it in your notification bar.`, 'info');
       setTimeout(async () => {
         playNotificationSound();
-        await sendDesktopNotification('StudyBuddy: New Job Alert!', {
+        const ok = await sendDesktopNotification('StudyBuddy: New Job Alert!', {
           body: 'Google • Software Engineer (Fresher) shared by your study buddy',
-          tag: 'test-job-alert',
-          requireInteraction: true,
+          tag: `test-job-${Date.now()}`,
         });
+        if (!ok) {
+          showToast('If notification was hidden, ensure Google Chrome is enabled in Windows Settings > System > Notifications.', 'info');
+        }
       }, delaySeconds * 1000);
     } else {
       playNotificationSound();
-      await sendDesktopNotification('StudyBuddy: New Job Alert!', {
+      const ok = await sendDesktopNotification('StudyBuddy: New Job Alert!', {
         body: 'Google • Software Engineer (Fresher) shared by your study buddy',
-        tag: 'test-job-alert',
-        requireInteraction: true,
+        tag: `test-job-${Date.now()}`,
       });
-      showToast('Notification sent to your Windows notification bar!', 'success');
+      if (ok) {
+        showToast('Notification sent to Windows notification bar!', 'success');
+      } else {
+        showToast('Ensure Google Chrome notifications are ON in Windows Settings > System > Notifications.', 'info');
+      }
     }
   };
 

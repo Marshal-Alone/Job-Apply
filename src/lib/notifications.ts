@@ -15,9 +15,6 @@ export interface DesktopNotificationOptions {
   requireInteraction?: boolean;
 }
 
-// Built-in inline SVG data URI icon so notifications never fail on missing files
-const DEFAULT_NOTIFICATION_ICON = '/icon.svg';
-
 /**
  * Synthesizes a pleasant two-tone chime (C5 523.25Hz -> E5 659.25Hz) using the Web Audio API.
  * Requires zero external audio files and executes with zero network latency.
@@ -45,7 +42,7 @@ export function playNotificationSound(): void {
     const gain1 = ctx.createGain();
     osc1.type = 'sine';
     osc1.frequency.setValueAtTime(523.25, now);
-    gain1.gain.setValueAtTime(0.12, now);
+    gain1.gain.setValueAtTime(0.14, now);
     gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
     osc1.connect(gain1);
     gain1.connect(ctx.destination);
@@ -57,7 +54,7 @@ export function playNotificationSound(): void {
     const gain2 = ctx.createGain();
     osc2.type = 'sine';
     osc2.frequency.setValueAtTime(659.25, now + 0.12);
-    gain2.gain.setValueAtTime(0.15, now + 0.12);
+    gain2.gain.setValueAtTime(0.18, now + 0.12);
     gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.48);
     osc2.connect(gain2);
     gain2.connect(ctx.destination);
@@ -105,73 +102,65 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 }
 
 /**
- * Hybrid desktop notification dispatcher:
+ * Desktop notification dispatcher:
  * 1. Checks if permission is 'granted'.
- * 2. Attempts Service Worker showNotification() with requireInteraction=true so it stays in the notification bar / Action Center.
- * 3. Falls back immediately to window Notification constructor if Service Worker is unavailable or slow.
+ * 2. Uses absolute raster PNG icon required by Windows Notification Service (WNS).
+ * 3. Tries Service Worker showNotification() first.
+ * 4. Falls back to window Notification constructor if Service Worker is unavailable.
  */
 export async function sendDesktopNotification(
   title: string,
   options: DesktopNotificationOptions
 ): Promise<boolean> {
   if (typeof window === 'undefined' || !('Notification' in window)) {
+    console.warn('[Notification] Notifications not supported in this environment');
     return false;
   }
 
   if (Notification.permission !== 'granted') {
+    console.warn('[Notification] Notification permission is not granted:', Notification.permission);
     return false;
   }
 
+  const iconUrl = new URL('/icon.png', window.location.origin).href;
+
   const notificationPayload: NotificationOptions = {
     body: options.body,
-    tag: options.tag || `studybuddy-alert-${Date.now()}`,
-    icon: options.icon || DEFAULT_NOTIFICATION_ICON,
-    badge: options.badge || DEFAULT_NOTIFICATION_ICON,
-    requireInteraction: options.requireInteraction !== false, // Default true: stays in Windows Notification Center / Action Bar!
-    silent: options.silent || false,
+    tag: options.tag || `studybuddy-${Date.now()}`,
+    icon: options.icon || iconUrl,
+    badge: options.badge || iconUrl,
+    requireInteraction: options.requireInteraction ?? true,
     data: options.data || { url: '/' },
   };
 
-  // 1. Service Worker hybrid dispatch (preferred for background & OS notification bar handling)
+  // 1. Try Service Worker showNotification first (with short timeout so we never hang)
   if ('serviceWorker' in navigator) {
     try {
-      // Race against 1000ms timeout so we never hang if sw is not activated yet
-      const registration = await Promise.race([
+      const reg = await Promise.race([
         navigator.serviceWorker.ready,
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 1000)),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 250)),
       ]);
-
-      if (registration && typeof registration.showNotification === 'function') {
-        await registration.showNotification(title, notificationPayload);
-        return true;
-      }
-
-      // If controller is active, postMessage fallback
-      if (navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({
-          type: 'SHOW_NOTIFICATION',
-          title,
-          options: notificationPayload,
-        });
+      if (reg && typeof reg.showNotification === 'function') {
+        await reg.showNotification(title, notificationPayload);
+        console.log('[Notification] Displayed via Service Worker:', title);
         return true;
       }
     } catch (swErr) {
-      console.warn('Service Worker notification failed, trying fallback constructor:', swErr);
+      console.warn('[Notification] Service Worker showNotification failed, trying fallback:', swErr);
     }
   }
 
   // 2. Direct Window Notification constructor fallback
   try {
     const notif = new Notification(title, notificationPayload);
-
     notif.onclick = () => {
       window.focus();
       notif.close();
     };
-
+    console.log('[Notification] Displayed via Window Notification:', title);
     return true;
-  } catch (notifErr) {
-    console.warn('Window Notification constructor failed:', notifErr);
+  } catch (err) {
+    console.error('[Notification] Direct Notification constructor failed:', err);
     return false;
   }
 }
