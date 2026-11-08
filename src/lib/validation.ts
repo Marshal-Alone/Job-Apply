@@ -93,3 +93,10 @@ export const parseJobWithAISchema = z.object({
   imageUrl: z.string().optional(), // base64 or URL
   imageUrls: z.array(z.string()).optional(),
 });
+
+export const deviceInitSchema = z.object({
+  deviceId: z.string().min(1, 'Device ID is required').max(100, 'Device ID is too long'),
+});
+
+export type DeviceInitInput = z.infer<typeof deviceInitSchema>;
+

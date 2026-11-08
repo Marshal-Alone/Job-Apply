@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getStudents, createStudent } from '@/lib/db';
-import { createProblemResponse } from '@/lib/validation';
+import { getStudents, createStudent, registerOrGetDevice } from '@/lib/db';
+import { createProblemResponse, deviceInitSchema } from '@/lib/validation';
 import { z } from 'zod';
 
 const studentSchema = z.object({
@@ -13,15 +13,39 @@ const studentSchema = z.object({
   skills: z.array(z.string()).default([]),
 });
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const students = await getStudents();
-    return NextResponse.json({ success: true, data: students });
+    const { searchParams } = new URL(req.url);
+    const queryDeviceId = searchParams.get('deviceId');
+    const headerDeviceId = req.headers.get('x-device-id');
+    const rawDeviceId = (queryDeviceId || headerDeviceId || '').trim();
+
+    if (rawDeviceId) {
+      const parsed = deviceInitSchema.safeParse({ deviceId: rawDeviceId });
+      if (parsed.success) {
+        const deviceRecord = await registerOrGetDevice(parsed.data.deviceId);
+        return NextResponse.json({
+          success: true,
+          data: students,
+          defaultStudentId: deviceRecord.defaultStudentId,
+          isFirstDevice: deviceRecord.isFirstDevice,
+        });
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: students,
+      defaultStudentId: 'marshal',
+      isFirstDevice: false,
+    });
   } catch (error) {
     console.error('Error fetching students:', error);
     return createProblemResponse(500, 'Database Error', 'Could not retrieve students');
   }
 }
+
 
 export async function POST(req: NextRequest) {
   try {

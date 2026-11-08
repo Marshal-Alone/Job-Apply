@@ -3,7 +3,7 @@
 import React from 'react';
 import { Student } from '@/lib/types';
 import { StudentSwitcher } from './StudentSwitcher';
-import { Briefcase, RefreshCw, Sun, Moon, Plus } from 'lucide-react';
+import { Briefcase, RefreshCw, Sun, Moon, Plus, Bell, BellOff } from 'lucide-react';
 
 interface NavbarProps {
   students: Student[];
@@ -14,6 +14,8 @@ interface NavbarProps {
   isRefreshing?: boolean;
   darkMode: boolean;
   onToggleDarkMode: () => void;
+  notificationPermission?: NotificationPermission;
+  onRequestNotificationPermission?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -25,6 +27,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   isRefreshing = false,
   darkMode,
   onToggleDarkMode,
+  notificationPermission = 'default',
+  onRequestNotificationPermission,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-[var(--border-subtle)] bg-white/80 dark:bg-black/85 backdrop-blur-md transition-colors duration-200">
@@ -71,6 +75,52 @@ export const Navbar: React.FC<NavbarProps> = ({
             {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
           </button>
 
+          {/* Notification Bell */}
+          <button
+            onClick={onRequestNotificationPermission}
+            className="relative p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#181818] transition-colors border border-slate-200 dark:border-[#272727] cursor-pointer active:scale-[0.98]"
+            title={
+              notificationPermission === 'granted'
+                ? 'Desktop notifications active'
+                : notificationPermission === 'denied'
+                ? 'Notifications blocked in browser settings'
+                : 'Enable desktop notifications'
+            }
+            aria-label={
+              notificationPermission === 'granted'
+                ? 'Desktop notifications active'
+                : notificationPermission === 'denied'
+                ? 'Desktop notifications blocked'
+                : 'Enable desktop notifications'
+            }
+          >
+            {notificationPermission === 'denied' ? (
+              <BellOff className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+            ) : (
+              <Bell
+                className={`w-3.5 h-3.5 ${
+                  notificationPermission === 'granted'
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : 'text-slate-600 dark:text-slate-300'
+                }`}
+              />
+            )}
+
+            {notificationPermission === 'granted' && (
+              <span
+                className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#181818]"
+                aria-hidden="true"
+              />
+            )}
+
+            {notificationPermission === 'default' && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2" aria-hidden="true">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+              </span>
+            )}
+          </button>
+
           {/* Student Switcher */}
           <StudentSwitcher
             students={students}
@@ -93,7 +143,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Share Job CTA Button (B2 main button padding: py-2 px-3) */}
           <button
             onClick={onOpenAddJob}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition-all duration-200 shadow-xs cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition-colors duration-200 shadow-xs cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Share job</span>

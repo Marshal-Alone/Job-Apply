@@ -1,7 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Job, Student, ApplicationStatus } from '@/lib/types';
+import {
+  registerServiceWorker,
+  sendDesktopNotification,
+  playNotificationSound,
+  getNotificationPermission,
+  requestNotificationPermission,
+} from '@/lib/notifications';
 import { Navbar } from '@/components/Navbar';
 import { StatsBanner } from '@/components/StatsBanner';
 import { FilterBar } from '@/components/FilterBar';
@@ -17,7 +24,35 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 
+function getOrCreateDeviceId(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    let id = localStorage.getItem('peerapply_device_id');
+    if (!id || id.trim().length === 0) {
+      const match = document.cookie.match(/(?:^|;\s*)peerapply_device_id=([^;]*)/);
+      if (match && match[1]) {
+        id = decodeURIComponent(match[1]);
+      }
+    }
+
+    if (!id || id.trim().length === 0) {
+      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        id = crypto.randomUUID();
+      } else {
+        id = 'dev-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9);
+      }
+    }
+
+    localStorage.setItem('peerapply_device_id', id);
+    document.cookie = `peerapply_device_id=${encodeURIComponent(id)}; path=/; max-age=31536000; SameSite=Lax`;
+    return id;
+  } catch {
+    return 'dev-fallback-' + Date.now();
+  }
+}
+
 export default function Home() {
+
   const [jobs, setJobs] = useState<Job[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [activeStudent, setActiveStudent] = useState<Student | null>(null);
@@ -25,6 +60,16 @@ export default function Home() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(true);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+
+  // Background Notification Diffing & Peer Filtering Refs
+  const knownJobIdsRef = useRef<Set<string>>(new Set());
+  const isInitialLoadRef = useRef<boolean>(true);
+  const activeStudentRef = useRef<Student | null>(activeStudent);
+
+  useEffect(() => {
+    activeStudentRef.current = activeStudent;
+  }, [activeStudent]);
 
   // Modals
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
@@ -46,14 +91,42 @@ export default function Home() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Fetch Jobs
+  // Fetch Jobs with peer diffing & desktop alerts
   const fetchJobs = useCallback(async (quiet = false) => {
     if (!quiet) setIsRefreshing(true);
     try {
       const res = await fetch('/api/jobs');
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
-        setJobs(json.data);
+        const incomingJobs: Job[] = json.data;
+
+        if (isInitialLoadRef.current) {
+          // On initial load: populate knownJobIdsRef with all existing job IDs
+          incomingJobs.forEach((job) => knownJobIdsRef.current.add(job.id));
+          isInitialLoadRef.current = false;
+        } else {
+          // In polling updates: diff incoming jobs against knownJobIdsRef
+          const currentStudent = activeStudentRef.current;
+          for (const job of incomingJobs) {
+            if (!knownJobIdsRef.current.has(job.id)) {
+              knownJobIdsRef.current.add(job.id);
+
+              // Notify if posted by peer (not the active student)
+              if (job.postedBy?.studentId && job.postedBy.studentId !== currentStudent?.id) {
+                const posterName = job.postedBy.studentName || 'Peer';
+                sendDesktopNotification(`New Job: ${job.title}`, {
+                  body: `${job.company} • Shared by ${posterName}`,
+                  tag: `job-${job.id}`,
+                  data: { url: '/' },
+                });
+                playNotificationSound();
+                showToast(`New job: "${job.title}" at ${job.company} (shared by ${posterName})`, 'info');
+              }
+            }
+          }
+        }
+
+        setJobs(incomingJobs);
         setFetchError(null);
       } else {
         if (!quiet) setFetchError(json.detail || 'Unable to load jobs board right now.');
@@ -67,25 +140,39 @@ export default function Home() {
     }
   }, []);
 
-  // Fetch Students & restore saved selection
+  // Fetch Students & restore saved selection with device-aware default
   const fetchStudents = useCallback(async () => {
     try {
-      const res = await fetch('/api/students');
+      const deviceId = getOrCreateDeviceId();
+      const endpoint = deviceId
+        ? `/api/students?deviceId=${encodeURIComponent(deviceId)}`
+        : '/api/students';
+
+      const res = await fetch(endpoint);
       const json = await res.json();
       if (json.success && Array.isArray(json.data) && json.data.length > 0) {
         setStudents(json.data);
 
-        // Saved selection in localStorage
+        // Saved selection in localStorage (preserves manual switch!)
         const savedId = typeof window !== 'undefined'
           ? localStorage.getItem('peerapply_active_student_id')
           : null;
 
-        const matched = json.data.find((s: Student) => s.id === savedId);
-        // Default to Marshal if not set or found
-        const chosen = matched || json.data.find((s: Student) => s.id === 'marshal') || json.data[0];
-        setActiveStudent(chosen);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('peerapply_active_student_id', chosen.id);
+        const manualMatch = json.data.find((s: Student) => s.id === savedId);
+        if (manualMatch) {
+          setActiveStudent(manualMatch);
+        } else {
+          // First time on this device: default based on device assignment (Device 1 -> marshal, Device 2+ -> vaishnavi)
+          const targetDefaultId = json.defaultStudentId || 'marshal';
+          const chosen =
+            json.data.find((s: Student) => s.id === targetDefaultId) ||
+            json.data.find((s: Student) => s.id === 'marshal') ||
+            json.data[0];
+
+          setActiveStudent(chosen);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('peerapply_active_student_id', chosen.id);
+          }
         }
       }
     } catch (err) {
@@ -94,6 +181,10 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    // Register background service worker & read initial notification permission
+    registerServiceWorker();
+    setNotificationPermission(getNotificationPermission());
+
     // Restore theme preference (default to dark)
     const savedTheme = typeof window !== 'undefined' ? localStorage.getItem('peerapply_theme') : null;
     if (savedTheme === 'light') {
@@ -107,12 +198,21 @@ export default function Home() {
     fetchStudents();
     fetchJobs();
 
-    // Auto-refresh interval (polling for peer updates every 15s)
+    // Auto-refresh interval (polling for peer updates every 5s)
     const interval = setInterval(() => {
       fetchJobs(true);
-    }, 15000);
+    }, 5000);
 
-    return () => clearInterval(interval);
+    // Immediate check when window/tab is focused
+    const handleFocus = () => {
+      fetchJobs(true);
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [fetchJobs, fetchStudents]);
 
   // Handle Student Selection & save to localStorage permanently
@@ -226,8 +326,22 @@ export default function Home() {
   };
 
   const handleJobAdded = (newJob: Job) => {
+    knownJobIdsRef.current.add(newJob.id);
     setJobs((prev) => [newJob, ...prev]);
-    showToast(`"${newJob.title}" posted to shared board!`, 'success');
+    const posterName = activeStudent?.name || 'you';
+    showToast(`"${newJob.title}" posted & marked as applied for ${posterName}!`, 'success');
+  };
+
+  // Notification Permission Request Handler
+  const handleRequestNotificationPermission = async () => {
+    const perm = await requestNotificationPermission();
+    setNotificationPermission(perm);
+    if (perm === 'granted') {
+      playNotificationSound();
+      showToast('Desktop notifications enabled! You will be alerted when new jobs are shared.', 'success');
+    } else if (perm === 'denied') {
+      showToast('Notifications blocked in browser. Please allow them in your site settings.', 'info');
+    }
   };
 
   // Toggle Dark Mode with persistence
@@ -322,6 +436,8 @@ export default function Home() {
         isRefreshing={isRefreshing}
         darkMode={darkMode}
         onToggleDarkMode={toggleDarkMode}
+        notificationPermission={notificationPermission}
+        onRequestNotificationPermission={handleRequestNotificationPermission}
       />
 
       {/* Main Board Container */}

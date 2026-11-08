@@ -64,3 +64,24 @@ export interface ProblemDetails {
   detail: string;
   instance?: string;
 }
+
+export interface DeviceRecord {
+  deviceId: string;
+  defaultStudentId: 'marshal' | 'vaishnavi';
+  isFirstDevice: boolean;
+  createdAt: string;
+  lastSeenAt: string;
+}
+
+export interface DeviceInitResponse {
+  success: boolean;
+  data: DeviceRecord;
+}
+
+export interface StudentsApiResponse {
+  success: boolean;
+  data: Student[];
+  defaultStudentId?: 'marshal' | 'vaishnavi';
+  isFirstDevice?: boolean;
+}
+

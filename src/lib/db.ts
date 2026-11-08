@@ -1,7 +1,7 @@
 import { MongoClient, Db } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
-import { Job, Student, StudentApplication } from './types';
+import { Job, Student, StudentApplication, DeviceRecord } from './types';
 
 // Global singleton cache for Next.js hot-reloading
 declare global {
@@ -58,6 +58,7 @@ export const INITIAL_STUDENTS: Student[] = [
 interface LocalDatabase {
   students: Student[];
   jobs: Job[];
+  devices?: DeviceRecord[];
 }
 
 function ensureLocalDb(): LocalDatabase {
@@ -69,6 +70,7 @@ function ensureLocalDb(): LocalDatabase {
       const initial: LocalDatabase = {
         students: INITIAL_STUDENTS,
         jobs: [],
+        devices: [],
       };
       fs.writeFileSync(DB_FILE, JSON.stringify(initial, null, 2), 'utf-8');
       return initial;
@@ -82,14 +84,19 @@ function ensureLocalDb(): LocalDatabase {
       // Remove any leftover dummy job IDs
       parsed.jobs = parsed.jobs.filter((j) => !['job-1', 'job-2', 'job-3'].includes(j.id));
     }
+    if (!Array.isArray(parsed.devices)) {
+      parsed.devices = [];
+    }
     return parsed;
   } catch {
     return {
       students: INITIAL_STUDENTS,
       jobs: [],
+      devices: [],
     };
   }
 }
+
 
 function writeLocalDb(db: LocalDatabase) {
   try {
@@ -164,7 +171,18 @@ export async function createJob(
     id: `job-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     createdAt: now,
     updatedAt: now,
-    applications: {},
+    applications: jobData.postedBy?.studentId
+      ? {
+          [jobData.postedBy.studentId]: {
+            studentId: jobData.postedBy.studentId,
+            studentName: jobData.postedBy.studentName,
+            studentAvatar: jobData.postedBy.studentAvatar,
+            status: 'APPLIED',
+            appliedAt: now,
+            updatedAt: now,
+          },
+        }
+      : {},
   };
 
   const db = await getMongoDb();
@@ -321,3 +339,93 @@ export async function createStudent(studentData: Omit<Student, 'id'>): Promise<S
   writeLocalDb(local);
   return newStudent;
 }
+
+export async function registerOrGetDevice(deviceId: string): Promise<DeviceRecord> {
+  const cleanId = (deviceId || '').trim();
+  const now = new Date().toISOString();
+
+  const db = await getMongoDb();
+  if (db) {
+    try {
+      const collection = db.collection<DeviceRecord>('devices');
+      const existing = await collection.findOne({ deviceId: cleanId });
+      if (existing) {
+        await collection.updateOne(
+          { deviceId: cleanId },
+          { $set: { lastSeenAt: now } }
+        );
+        return {
+          deviceId: existing.deviceId,
+          defaultStudentId: existing.defaultStudentId,
+          isFirstDevice: existing.isFirstDevice,
+          createdAt: existing.createdAt,
+          lastSeenAt: now,
+        };
+      }
+
+      const count = await collection.countDocuments({});
+      const isFirst = count === 0;
+      const defaultStudentId: 'marshal' | 'vaishnavi' = isFirst ? 'marshal' : 'vaishnavi';
+      const record: DeviceRecord = {
+        deviceId: cleanId,
+        defaultStudentId,
+        isFirstDevice: isFirst,
+        createdAt: now,
+        lastSeenAt: now,
+      };
+      await collection.insertOne(record as unknown as DeviceRecord);
+      return record;
+    } catch (e) {
+      console.warn('MongoDB device registration failed, using local DB:', e);
+    }
+  }
+
+  // Local fallback
+  const local = ensureLocalDb();
+  if (!Array.isArray(local.devices)) {
+    local.devices = [];
+  }
+
+  const existingLocal = local.devices.find((d) => d.deviceId === cleanId);
+  if (existingLocal) {
+    existingLocal.lastSeenAt = now;
+    writeLocalDb(local);
+    return existingLocal;
+  }
+
+  const isFirstLocal = local.devices.length === 0;
+  const defaultStudentId: 'marshal' | 'vaishnavi' = isFirstLocal ? 'marshal' : 'vaishnavi';
+  const newRecord: DeviceRecord = {
+    deviceId: cleanId,
+    defaultStudentId,
+    isFirstDevice: isFirstLocal,
+    createdAt: now,
+    lastSeenAt: now,
+  };
+  local.devices.push(newRecord);
+  writeLocalDb(local);
+  return newRecord;
+}
+
+export async function getDevices(): Promise<DeviceRecord[]> {
+  const db = await getMongoDb();
+  if (db) {
+    try {
+      const collection = db.collection<DeviceRecord>('devices');
+      const devices = await collection.find({}).toArray();
+      return devices.map((d) => ({
+        deviceId: d.deviceId,
+        defaultStudentId: d.defaultStudentId,
+        isFirstDevice: d.isFirstDevice,
+        createdAt: d.createdAt,
+        lastSeenAt: d.lastSeenAt,
+      }));
+    } catch (e) {
+      console.warn('MongoDB getDevices failed, falling back to local DB:', e);
+    }
+  }
+
+  const local = ensureLocalDb();
+  return local.devices || [];
+}
+
